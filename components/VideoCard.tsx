@@ -1,4 +1,4 @@
-import { Video, Platform } from "@prisma/client"
+import { Platform } from "@prisma/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EligibilityBadge } from "./EligibilityBadge"
 import { Badge } from "@/components/ui/badge"
@@ -6,7 +6,16 @@ import { ExternalLink, Clock, Eye } from "lucide-react"
 import Link from "next/link"
 
 interface VideoCardProps {
-  video: Video & {
+  video: {
+    id: string
+    platform: Platform | string
+    title: string
+    description?: string | null
+    publishedAt: Date | string
+    durationSeconds?: number | null
+    views: number
+    thumbnailUrl?: string | null
+    url: string
     eligibility: {
       isEligible: boolean
       reasons: string[]

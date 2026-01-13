@@ -177,9 +177,13 @@ The app will be available at http://localhost:3000
      DATABASE_URL = (your Supabase connection pooling URL with password)
      DIRECT_URL = (your Supabase direct connection URL with password)
      ADMIN_PASSWORD = (your admin password)
-     NEXT_PUBLIC_APP_URL = (will be set automatically, but you can override)
      YOUTUBE_API_KEY = (your YouTube API key)
      ```
+
+     **Important for NEXT_PUBLIC_APP_URL:**
+     - **Skip this for now** - You'll set it after the first deployment
+     - This variable is used to generate dashboard links for participants
+     - You'll update it in Step 7.5 after you get your production URL
 
      **Optional Variables:**
      ```
@@ -225,16 +229,32 @@ The app will be available at http://localhost:3000
    - Once deployed, Vercel will show you a URL like: `https://your-project.vercel.app`
    - This is your production URL!
 
-### 7.5: Update Environment Variables
+### 7.5: Update NEXT_PUBLIC_APP_URL (REQUIRED)
 
-1. **Update NEXT_PUBLIC_APP_URL:**
-   - Go to your project settings in Vercel
-   - Go to "Environment Variables"
-   - Update `NEXT_PUBLIC_APP_URL` to your production URL:
-     ```
-     NEXT_PUBLIC_APP_URL=https://your-project.vercel.app
-     ```
-   - Redeploy (or it will update on next deployment)
+**You MUST set this after deployment** - Dashboard links won't work correctly without it!
+
+1. **Get Your Production URL:**
+   - After deployment completes, copy your production URL
+   - It will be something like: `https://your-project.vercel.app`
+
+2. **Add NEXT_PUBLIC_APP_URL:**
+   - Go to Vercel dashboard → Your project → "Settings" → "Environment Variables"
+   - Click "Add New"
+   - Variable name: `NEXT_PUBLIC_APP_URL`
+   - Value: `https://your-project.vercel.app` (use your actual URL)
+   - Select environments: ✅ Production, ✅ Preview
+   - Click "Save"
+
+3. **Redeploy:**
+   - Go to "Deployments" tab
+   - Click the three dots (⋯) on your latest deployment
+   - Click "Redeploy"
+   - This ensures the new environment variable is used
+
+**Why this is important:**
+- This URL is used to generate dashboard links when participants register
+- Without it, dashboard links will point to `http://localhost:3000` (which won't work)
+- After setting this, all new registrations will get correct dashboard links
 
 ### 7.6: Set Up Cron Jobs
 

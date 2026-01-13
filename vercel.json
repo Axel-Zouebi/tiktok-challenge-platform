@@ -1,0 +1,13 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-videos",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/roblox-ccu",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
+

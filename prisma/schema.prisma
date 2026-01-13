@@ -1,0 +1,94 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Platform {
+  tiktok
+  youtube
+}
+
+model Participant {
+  id            String    @id @default(uuid())
+  displayName   String
+  email         String?
+  dashboardToken String   @unique @default(uuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  channels      Channel[]
+
+  @@index([dashboardToken])
+}
+
+model Channel {
+  id            String    @id @default(uuid())
+  participantId String
+  platform      Platform
+  handle        String?
+  channelId     String?
+  url           String?
+  createdAt     DateTime  @default(now())
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  videos        Video[]
+
+  @@index([participantId])
+  @@index([platform, channelId])
+}
+
+model Video {
+  id              String    @id @default(uuid())
+  platform        Platform
+  channelId       String
+  externalVideoId String
+  url             String
+  title           String
+  description     String?
+  publishedAt     DateTime
+  durationSeconds Int?
+  views           Int       @default(0)
+  thumbnailUrl    String?
+  rawJson         Json?
+  lastSyncedAt    DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  channel         Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  eligibility     VideoEligibility?
+
+  @@unique([platform, externalVideoId])
+  @@index([channelId])
+  @@index([publishedAt])
+  @@index([platform])
+}
+
+model VideoEligibility {
+  id                String    @id @default(uuid())
+  videoId           String    @unique
+  isEligible        Boolean   @default(false)
+  reasons           String[]
+  eligibleRobux    Int       @default(0)
+  overriddenByAdmin Boolean   @default(false)
+  overriddenBy      String?
+  overriddenAt      DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  video             Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([isEligible])
+}
+
+model RobloxMetrics {
+  id        String    @id @default(uuid())
+  timestamp DateTime  @default(now())
+  ccu       Int
+  placeId   String?
+
+  @@index([timestamp])
+}
+

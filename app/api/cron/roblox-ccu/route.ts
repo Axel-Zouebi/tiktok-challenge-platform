@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { fetchRobloxCCU } from '@/lib/api/roblox'
 
+export const dynamic = 'force-dynamic'
+
 // Verify this is a cron request
 function verifyCronRequest(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')

@@ -4,6 +4,8 @@ import { fetchYouTubeVideos, youtubeVideoToDbFormat } from '@/lib/api/youtube'
 import { fetchTikTokVideos, tiktokVideoToDbFormat } from '@/lib/api/tiktok'
 import { checkEligibilityForVideos } from '@/lib/eligibility'
 
+export const dynamic = 'force-dynamic'
+
 // Verify this is a cron request (Vercel Cron sends a header)
 function verifyCronRequest(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')

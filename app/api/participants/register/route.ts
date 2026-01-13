@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db'
 import { generateToken, extractYouTubeChannelId, extractTikTokHandle } from '@/lib/utils'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const registerSchema = z.object({
   displayName: z.string().min(1, 'Display name is required'),
   email: z.union([

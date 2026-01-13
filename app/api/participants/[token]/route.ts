@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db'
 import { checkEligibilityForVideos } from '@/lib/eligibility'
 import { calculateParticipantRobux } from '@/lib/robux'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { token: string } }

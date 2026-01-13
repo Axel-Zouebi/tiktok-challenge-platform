@@ -4,6 +4,8 @@ import { cookies } from 'next/headers'
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
 
+export const dynamic = 'force-dynamic'
+
 function verifyAdmin(request: NextRequest): boolean {
   const cookieStore = cookies()
   const adminToken = cookieStore.get('admin_token')

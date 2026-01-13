@@ -4,6 +4,8 @@ import { z } from 'zod'
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
 
+export const dynamic = 'force-dynamic'
+
 const loginSchema = z.object({
   password: z.string(),
 })

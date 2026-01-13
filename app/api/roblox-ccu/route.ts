@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { fetchRobloxCCU } from '@/lib/api/roblox'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     // Try to get cached value first (within last 60 seconds)

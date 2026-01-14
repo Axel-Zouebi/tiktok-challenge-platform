@@ -33,6 +33,67 @@ function parseDuration(duration: string): number {
 }
 
 /**
+ * Resolve a channel identifier (ID, handle, or username) to a channel ID
+ * Returns the channel ID if found, null otherwise
+ */
+async function resolveChannelId(identifier: string): Promise<string | null> {
+  if (!YOUTUBE_API_KEY) {
+    throw new Error('YOUTUBE_API_KEY is not set')
+  }
+
+  // If it's already a valid channel ID (starts with UC), return it
+  if (identifier.startsWith('UC') && identifier.length === 24) {
+    return identifier
+  }
+
+  // Remove @ prefix if present
+  const cleanIdentifier = identifier.startsWith('@') ? identifier.slice(1) : identifier
+
+  try {
+    // Try forHandle first (newer API, works for custom handles)
+    let response = await fetch(
+      `${YOUTUBE_API_BASE}/channels?part=id&forHandle=${cleanIdentifier}&key=${YOUTUBE_API_KEY}`
+    )
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.items && data.items.length > 0) {
+        return data.items[0].id
+      }
+    }
+
+    // If forHandle didn't work, try forUsername (legacy, but still works for some)
+    response = await fetch(
+      `${YOUTUBE_API_BASE}/channels?part=id&forUsername=${cleanIdentifier}&key=${YOUTUBE_API_KEY}`
+    )
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.items && data.items.length > 0) {
+        return data.items[0].id
+      }
+    }
+
+    // If neither worked, try as a channel ID anyway (in case it's a different format)
+    response = await fetch(
+      `${YOUTUBE_API_BASE}/channels?part=id&id=${identifier}&key=${YOUTUBE_API_KEY}`
+    )
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.items && data.items.length > 0) {
+        return data.items[0].id
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error(`Error resolving channel identifier "${identifier}":`, error)
+    return null
+  }
+}
+
+/**
  * Get channel information by channel ID
  */
 export async function getYouTubeChannelInfo(channelId: string): Promise<YouTubeChannelInfo | null> {
@@ -41,8 +102,14 @@ export async function getYouTubeChannelInfo(channelId: string): Promise<YouTubeC
   }
 
   try {
+    // First resolve to actual channel ID if needed
+    const resolvedId = await resolveChannelId(channelId)
+    if (!resolvedId) {
+      return null
+    }
+
     const response = await fetch(
-      `${YOUTUBE_API_BASE}/channels?part=snippet&id=${channelId}&key=${YOUTUBE_API_KEY}`
+      `${YOUTUBE_API_BASE}/channels?part=snippet&id=${resolvedId}&key=${YOUTUBE_API_KEY}`
     )
 
     if (!response.ok) {
@@ -72,20 +139,42 @@ export async function getYouTubeChannelInfo(channelId: string): Promise<YouTubeC
  */
 export async function fetchYouTubeVideos(
   channelId: string,
-  maxResults: number = 50
+  maxResults: number = 50,
+  channelUrl?: string
 ): Promise<YouTubeVideo[]> {
   if (!YOUTUBE_API_KEY) {
     throw new Error('YOUTUBE_API_KEY is not set')
   }
 
   try {
-    // First, get the uploads playlist ID
+    // First, resolve the channel identifier to an actual channel ID
+    let resolvedChannelId = await resolveChannelId(channelId)
+    
+    // If resolution failed and we have a URL, try extracting from URL
+    if (!resolvedChannelId && channelUrl) {
+      // Try to extract handle or ID from URL
+      const urlMatch = channelUrl.match(/youtube\.com\/(?:channel\/([^/?]+)|@([^/?]+)|c\/([^/?]+)|user\/([^/?]+))/)
+      if (urlMatch) {
+        const extractedId = urlMatch[1] || urlMatch[2] || urlMatch[3] || urlMatch[4]
+        if (extractedId && extractedId !== channelId) {
+          resolvedChannelId = await resolveChannelId(extractedId)
+        }
+      }
+    }
+    
+    if (!resolvedChannelId) {
+      throw new Error(`Could not resolve channel identifier: ${channelId}${channelUrl ? ` (URL: ${channelUrl})` : ''}. Please ensure it's a valid channel ID, handle, or username.`)
+    }
+
+    // Get the uploads playlist ID using the resolved channel ID
     const channelResponse = await fetch(
-      `${YOUTUBE_API_BASE}/channels?part=contentDetails&id=${channelId}&key=${YOUTUBE_API_KEY}`
+      `${YOUTUBE_API_BASE}/channels?part=contentDetails&id=${resolvedChannelId}&key=${YOUTUBE_API_KEY}`
     )
 
     if (!channelResponse.ok) {
-      throw new Error(`YouTube API error: ${channelResponse.statusText}`)
+      const errorData = await channelResponse.json().catch(() => ({}))
+      const errorMessage = errorData.error?.message || channelResponse.statusText
+      throw new Error(`YouTube API error: ${errorMessage}`)
     }
 
     const channelData = await channelResponse.json()

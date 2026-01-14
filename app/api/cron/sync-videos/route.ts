@@ -39,11 +39,16 @@ export async function GET(request: NextRequest) {
 
         // Fetch videos based on platform
         if (channel.platform === 'youtube' && channel.channelId) {
-          const youtubeVideos = await fetchYouTubeVideos(channel.channelId)
-          videos = youtubeVideos.map((v) => ({
-            ...youtubeVideoToDbFormat(v, channel.id),
-            externalVideoId: v.id,
-          }))
+          try {
+            const youtubeVideos = await fetchYouTubeVideos(channel.channelId, 50, channel.url || undefined)
+            videos = youtubeVideos.map((v) => ({
+              ...youtubeVideoToDbFormat(v, channel.id),
+              externalVideoId: v.id,
+            }))
+          } catch (error) {
+            console.error(`Error fetching YouTube videos for channel ${channel.id} (channelId: ${channel.channelId}):`, error)
+            throw error // Re-throw to be caught by outer catch
+          }
         } else if (channel.platform === 'tiktok' && channel.handle) {
           try {
             const tiktokVideos = await fetchTikTokVideos(channel.handle)
@@ -109,8 +114,10 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (error) {
-        console.error(`Error syncing channel ${channel.id}:`, error)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        console.error(`Error syncing channel ${channel.id} (platform: ${channel.platform}, channelId: ${channel.channelId || 'N/A'}, handle: ${channel.handle || 'N/A'}):`, errorMessage)
         errorCount++
+        // Continue with other channels even if one fails
       }
     }
 

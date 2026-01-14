@@ -22,9 +22,51 @@ export default function JoinPage() {
     tiktokHandle: "",
     youtubeChannel: "",
   })
+  const [errors, setErrors] = useState<{
+    displayName?: string
+    email?: string
+    tiktokHandle?: string
+    youtubeChannel?: string
+  }>({})
+
+  const validateForm = () => {
+    const newErrors: typeof errors = {}
+
+    // Validate display name (required)
+    if (!formData.displayName.trim()) {
+      newErrors.displayName = "Display name is required"
+    }
+
+    // Validate email (optional, but must be valid if provided)
+    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address"
+    }
+
+    // Validate at least one platform is provided
+    const hasTikTok = formData.tiktokHandle.trim().length > 0
+    const hasYouTube = formData.youtubeChannel.trim().length > 0
+    if (!hasTikTok && !hasYouTube) {
+      newErrors.tiktokHandle = "At least one platform (TikTok or YouTube) is required"
+      newErrors.youtubeChannel = "At least one platform (TikTok or YouTube) is required"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate form before submitting
+    if (!validateForm()) {
+      toast({
+        title: "Please fix the errors",
+        description: "Some required fields are missing or invalid.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -39,6 +81,23 @@ export default function JoinPage() {
       const data = await response.json()
 
       if (!response.ok) {
+        // Handle server-side validation errors
+        if (data.details && Array.isArray(data.details)) {
+          const serverErrors: typeof errors = {}
+          data.details.forEach((detail: { field: string; message: string }) => {
+            if (detail.field === 'displayName') {
+              serverErrors.displayName = detail.message
+            } else if (detail.field === 'email') {
+              serverErrors.email = detail.message
+            } else if (detail.field === 'tiktokHandle') {
+              serverErrors.tiktokHandle = detail.message
+            } else if (detail.field === 'youtubeChannel') {
+              serverErrors.youtubeChannel = detail.message
+            }
+          })
+          setErrors(serverErrors)
+        }
+        
         // Show detailed error message if available
         const errorMessage = data.details 
           ? `${data.error}: ${Array.isArray(data.details) ? data.details.map((d: any) => d.message).join(', ') : data.details}`
@@ -65,6 +124,14 @@ export default function JoinPage() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData({ ...formData, [field]: value })
+    // Clear error for this field when user starts typing
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: undefined })
     }
   }
 
@@ -130,11 +197,13 @@ export default function JoinPage() {
                 id="displayName"
                 required
                 value={formData.displayName}
-                onChange={(e) =>
-                  setFormData({ ...formData, displayName: e.target.value })
-                }
+                onChange={(e) => handleInputChange("displayName", e.target.value)}
                 placeholder="Your name or channel name"
+                className={errors.displayName ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
+              {errors.displayName && (
+                <p className="text-sm text-red-500">{errors.displayName}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -143,11 +212,13 @@ export default function JoinPage() {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
+                onChange={(e) => handleInputChange("email", e.target.value)}
                 placeholder="your@email.com"
+                className={errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -155,11 +226,13 @@ export default function JoinPage() {
               <Input
                 id="tiktokHandle"
                 value={formData.tiktokHandle}
-                onChange={(e) =>
-                  setFormData({ ...formData, tiktokHandle: e.target.value })
-                }
+                onChange={(e) => handleInputChange("tiktokHandle", e.target.value)}
                 placeholder="@username or https://tiktok.com/@username"
+                className={errors.tiktokHandle ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
+              {errors.tiktokHandle && (
+                <p className="text-sm text-red-500">{errors.tiktokHandle}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -167,11 +240,13 @@ export default function JoinPage() {
               <Input
                 id="youtubeChannel"
                 value={formData.youtubeChannel}
-                onChange={(e) =>
-                  setFormData({ ...formData, youtubeChannel: e.target.value })
-                }
+                onChange={(e) => handleInputChange("youtubeChannel", e.target.value)}
                 placeholder="Channel ID or https://youtube.com/channel/..."
+                className={errors.youtubeChannel ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
+              {errors.youtubeChannel && (
+                <p className="text-sm text-red-500">{errors.youtubeChannel}</p>
+              )}
               <p className="text-xs text-muted-foreground">
                 At least one platform (TikTok or YouTube) is required
               </p>

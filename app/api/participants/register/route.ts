@@ -86,7 +86,13 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/p/${dashboardToken}`
+    // Get the base URL from the request (works in all environments)
+    // Vercel sets x-forwarded-proto header, otherwise use the request URL
+    const forwardedProto = request.headers.get('x-forwarded-proto')
+    const protocol = forwardedProto || (request.nextUrl.protocol?.replace(':', '') || 'http')
+    const host = request.headers.get('host') || request.nextUrl.host
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`
+    const dashboardUrl = `${baseUrl}/p/${dashboardToken}`
 
     return NextResponse.json({
       success: true,

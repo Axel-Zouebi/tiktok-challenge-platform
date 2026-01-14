@@ -6,10 +6,33 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
 import { Separator } from "@/components/ui/separator"
+import { headers } from "next/headers"
+
+function getBaseUrl(): string {
+  // Try environment variable first
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL
+  }
+  
+  // Try to get from headers (works in server components)
+  try {
+    const headersList = headers()
+    const host = headersList.get('host')
+    const protocol = headersList.get('x-forwarded-proto') || 'http'
+    if (host) {
+      return `${protocol}://${host}`
+    }
+  } catch {
+    // Fallback if headers not available
+  }
+  
+  // Final fallback
+  return "http://localhost:3000"
+}
 
 async function getLeaderboard(platform: "tiktok" | "youtube"): Promise<LeaderboardEntry[]> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const baseUrl = getBaseUrl()
     const res = await fetch(`${baseUrl}/api/leaderboard?platform=${platform}`, {
       cache: "no-store",
     })
@@ -23,7 +46,7 @@ async function getLeaderboard(platform: "tiktok" | "youtube"): Promise<Leaderboa
 
 async function getRobuxStats() {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const baseUrl = getBaseUrl()
     const res = await fetch(`${baseUrl}/api/robux`, { cache: "no-store" })
     if (!res.ok) return { totalSpent: 0, remaining: 50000, budgetExceeded: false }
     return await res.json()

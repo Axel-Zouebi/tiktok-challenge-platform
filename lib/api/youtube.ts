@@ -249,6 +249,119 @@ export async function fetchYouTubeVideos(
 }
 
 /**
+ * Search for videos by title in a specific channel
+ * Returns videos that match the title search term (case-insensitive partial match)
+ */
+export async function searchYouTubeVideosByTitle(
+  channelId: string,
+  titleSearch: string,
+  maxResults: number = 50,
+  channelUrl?: string
+): Promise<YouTubeVideo[]> {
+  if (!YOUTUBE_API_KEY) {
+    throw new Error('YOUTUBE_API_KEY is not set')
+  }
+
+  try {
+    // First, resolve the channel identifier to an actual channel ID
+    let resolvedChannelId = await resolveChannelId(channelId)
+    
+    // If resolution failed and we have a URL, try extracting from URL
+    if (!resolvedChannelId && channelUrl) {
+      const urlMatch = channelUrl.match(/youtube\.com\/(?:channel\/([^/?]+)|@([^/?]+)|c\/([^/?]+)|user\/([^/?]+))/)
+      if (urlMatch) {
+        const extractedId = urlMatch[1] || urlMatch[2] || urlMatch[3] || urlMatch[4]
+        if (extractedId && extractedId !== channelId) {
+          resolvedChannelId = await resolveChannelId(extractedId)
+        }
+      }
+    }
+    
+    if (!resolvedChannelId) {
+      throw new Error(`Could not resolve channel identifier: ${channelId}${channelUrl ? ` (URL: ${channelUrl})` : ''}`)
+    }
+
+    // Get the uploads playlist ID
+    const channelResponse = await fetch(
+      `${YOUTUBE_API_BASE}/channels?part=contentDetails&id=${resolvedChannelId}&key=${YOUTUBE_API_KEY}`
+    )
+
+    if (!channelResponse.ok) {
+      const errorData = await channelResponse.json().catch(() => ({}))
+      const errorMessage = errorData.error?.message || channelResponse.statusText
+      throw new Error(`YouTube API error: ${errorMessage}`)
+    }
+
+    const channelData = await channelResponse.json()
+    if (!channelData.items || channelData.items.length === 0) {
+      return []
+    }
+
+    const uploadsPlaylistId = channelData.items[0].contentDetails?.relatedPlaylists?.uploads
+    if (!uploadsPlaylistId) {
+      return []
+    }
+
+    // Get videos from uploads playlist
+    const videosResponse = await fetch(
+      `${YOUTUBE_API_BASE}/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`
+    )
+
+    if (!videosResponse.ok) {
+      throw new Error(`YouTube API error: ${videosResponse.statusText}`)
+    }
+
+    const videosData = await videosResponse.json()
+    if (!videosData.items || videosData.items.length === 0) {
+      return []
+    }
+
+    // Get video IDs
+    const videoIds = videosData.items.map((item: any) => item.snippet.resourceId.videoId).join(',')
+
+    // Get detailed video information
+    const detailsResponse = await fetch(
+      `${YOUTUBE_API_BASE}/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`
+    )
+
+    if (!detailsResponse.ok) {
+      throw new Error(`YouTube API error: ${detailsResponse.statusText}`)
+    }
+
+    const detailsData = await detailsResponse.json()
+    if (!detailsData.items) {
+      return []
+    }
+
+    // Filter by title search term (case-insensitive partial match)
+    const searchTerm = titleSearch.toLowerCase()
+    const videos: YouTubeVideo[] = []
+
+    for (const video of detailsData.items) {
+      const title = video.snippet.title || ''
+      
+      if (title.toLowerCase().includes(searchTerm)) {
+        videos.push({
+          id: video.id,
+          title: video.snippet.title,
+          description: video.snippet.description || '',
+          publishedAt: video.snippet.publishedAt,
+          duration: video.contentDetails.duration,
+          viewCount: video.statistics.viewCount || '0',
+          thumbnailUrl: video.snippet.thumbnails?.high?.url || video.snippet.thumbnails?.default?.url || '',
+          url: `https://www.youtube.com/watch?v=${video.id}`,
+        })
+      }
+    }
+
+    return videos
+  } catch (error) {
+    console.error('Error searching YouTube videos by title:', error)
+    throw error
+  }
+}
+
+/**
  * Convert YouTube video to database format
  */
 export function youtubeVideoToDbFormat(video: YouTubeVideo, channelId: string) {

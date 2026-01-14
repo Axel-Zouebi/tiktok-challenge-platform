@@ -1,15 +1,48 @@
-# Quick Setup Guide
+# Complete Setup Guide
 
-Follow these steps to get your challenge platform running:
+Follow these steps to get your challenge platform running from scratch to deployment.
+
+## Table of Contents
+
+1. [Prerequisites](#prerequisites)
+2. [Step 1: Set Up Supabase Database with Prisma](#step-1-set-up-supabase-database-with-prisma)
+3. [Step 2: Create Environment Variables File](#step-2-create-environment-variables-file)
+4. [Step 3: Get YouTube API Key](#step-3-get-youtube-api-key)
+5. [Step 4: Get TikTok API Credentials (Optional)](#step-4-get-tiktok-api-credentials-optional)
+6. [Step 5: Set Up Database Schema](#step-5-set-up-database-schema)
+7. [Step 6: Start Development Server](#step-6-start-development-server)
+8. [Step 7: Test the Setup](#step-7-test-the-setup)
+9. [Step 8: Deploy to Vercel](#step-8-deploy-to-vercel)
+10. [Step 9: Set Up Cron Jobs](#step-9-set-up-cron-jobs)
+11. [Troubleshooting](#troubleshooting)
+12. [Next Steps After Setup](#next-steps-after-setup)
+
+---
+
+## Prerequisites
+
+- Node.js 18+ and npm installed
+- A Supabase account (free tier works)
+- A Google Cloud account (for YouTube API)
+- A GitHub account (for deployment)
+- A Vercel account (free tier works)
+
+---
 
 ## Step 1: Set Up Supabase Database with Prisma
 
+### 1.1: Create Supabase Project
+
 1. Go to https://supabase.com and create a new project (or use existing)
 2. Wait for the project to be ready (takes ~2 minutes)
-3. Go to **Project Settings** > **Database**
-4. Click on the **"ORMs"** tab (not "Connection String")
-5. Select **"Prisma"** from the dropdown
-6. You'll see two connection strings:
+3. Note your database password (you'll need it later)
+
+### 1.2: Get Connection Strings
+
+1. Go to **Project Settings** > **Database**
+2. Click on the **"ORMs"** tab (not "Connection String")
+3. Select **"Prisma"** from the dropdown
+4. You'll see two connection strings:
 
    **DATABASE_URL** (Connection Pooling - for your app):
    - This uses port **6543** with `?pgbouncer=true`
@@ -23,7 +56,14 @@ Follow these steps to get your challenge platform running:
    - Copy this entire string (it will have `[YOUR-PASSWORD]` placeholder)
    - Replace `[YOUR-PASSWORD]` with your actual database password
 
-7. **Important:** Make sure to replace `[YOUR-PASSWORD]` in BOTH strings with your actual Supabase database password
+5. **Important:** Make sure to replace `[YOUR-PASSWORD]` in BOTH strings with your actual Supabase database password
+
+### 1.3: Why Two Connection Strings?
+
+- **DATABASE_URL** (port 6543): Uses connection pooling (PgBouncer) - optimized for serverless/server apps that make many connections
+- **DIRECT_URL** (port 5432): Direct database connection - required for Prisma migrations which need direct access
+
+---
 
 ## Step 2: Create Environment Variables File
 
@@ -54,6 +94,9 @@ Follow these steps to get your challenge platform running:
    # TikTok API (Optional)
    TIKTOK_CLIENT_KEY=optional
    TIKTOK_CLIENT_SECRET=optional
+
+   # Cron Security (Optional, but recommended for production)
+   CRON_SECRET=optional-random-string
    ```
 
    **Important:**
@@ -63,6 +106,8 @@ Follow these steps to get your challenge platform running:
    - Replace the project reference (e.g., `gtsxtqluqkojqbltgakr`) with your actual Supabase project reference
    - Choose a secure password for `ADMIN_PASSWORD` (this is for accessing the admin dashboard)
    - You can skip `YOUTUBE_API_KEY` for now and add it later in Step 3
+
+---
 
 ## Step 3: Get YouTube API Key
 
@@ -79,7 +124,64 @@ Follow these steps to get your challenge platform running:
    - (Optional) Restrict the key to YouTube Data API v3
 5. Add the key to your `.env` file as `YOUTUBE_API_KEY`
 
-## Step 4: Set Up Database Schema
+---
+
+## Step 4: Get TikTok API Credentials (Optional)
+
+The platform supports TikTok API integration, but requires OAuth setup. If not available, the system will use manual submission mode.
+
+### 4.1: Register for TikTok Developer Account
+
+1. Go to [TikTok for Developers](https://developers.tiktok.com/)
+2. Sign in with your TikTok account
+3. Complete the developer registration form to create your developer account
+
+### 4.2: Create a New Application
+
+1. In your developer dashboard, click on **"Manage apps"**
+2. Click **"Create App"**
+3. Fill in the required details for your application:
+   - App name
+   - App description
+   - Category
+   - Website URL
+4. **Important**: Specify your Redirect URI(s):
+   - For local development: `http://localhost:3000/api/auth/tiktok/callback`
+   - For production: `https://yourdomain.com/api/auth/tiktok/callback`
+   - Ensure these URIs are absolute and begin with `https` or `http`
+
+### 4.3: Get Your Client Key and Client Secret
+
+1. Once your application is created, navigate to **"App Details"** or **"Basic Information"** section
+2. You'll find your **Client Key** (also called App ID) - this is visible immediately
+3. To get your **Client Secret**:
+   - Look for the "Client Secret" field
+   - Click the eye icon (👁️) to reveal it
+   - **Important**: Copy this immediately - you may not be able to view it again!
+
+### 4.4: Add Credentials to Your `.env` File
+
+Add or update these lines in your `.env` file:
+
+```env
+TIKTOK_CLIENT_KEY=your_actual_client_key_here
+TIKTOK_CLIENT_SECRET=your_actual_client_secret_here
+```
+
+⚠️ **Security Warning:**
+- Never commit your `.env` file to Git (it's already in `.gitignore`)
+- Never share your Client Secret publicly
+- Keep these credentials secure
+
+📝 **Note:**
+- TikTok API requires OAuth approval process
+- Some APIs may require additional permissions or approval
+- The current implementation in `lib/api/tiktok.ts` is a placeholder that will need OAuth flow implementation
+- If TikTok API keys are not configured, the system will automatically use manual submission mode
+
+---
+
+## Step 5: Set Up Database Schema
 
 Run this command to push the schema to your Supabase database:
 
@@ -89,7 +191,16 @@ npm run db:push
 
 This will create all the necessary tables in your database.
 
-## Step 5: Start Development Server
+**Troubleshooting Database Connection:**
+- If you get "Can't reach database server" error:
+  - Check your password: Make sure you replaced `[YOUR-PASSWORD]` with your actual password
+  - Check the URLs: Verify both URLs are correct and match what Supabase shows
+  - Check project status: Ensure your Supabase project is active and not paused
+  - Try the direct connection: Test if `DIRECT_URL` works by temporarily using it for both
+
+---
+
+## Step 6: Start Development Server
 
 ```bash
 npm run dev
@@ -97,7 +208,9 @@ npm run dev
 
 The app will be available at http://localhost:3000
 
-## Step 6: Test the Setup
+---
+
+## Step 7: Test the Setup
 
 1. **Test Registration:**
    - Go to http://localhost:3000/join
@@ -114,9 +227,11 @@ The app will be available at http://localhost:3000
      - http://localhost:3000/api/cron/sync-videos
      - http://localhost:3000/api/cron/roblox-ccu
 
-## Step 7: Deploy to Vercel
+---
 
-### 7.1: Prepare Your Code for Deployment
+## Step 8: Deploy to Vercel
+
+### 8.1: Prepare Your Code for Deployment
 
 1. **Create a GitHub Repository:**
    - Go to https://github.com and create a new repository
@@ -147,13 +262,13 @@ The app will be available at http://localhost:3000
    - Make sure `.env` is NOT committed to GitHub (it should be in `.gitignore`)
    - Your `.env` file contains sensitive information and should never be pushed
 
-### 7.2: Set Up Vercel Account
+### 8.2: Set Up Vercel Account
 
 1. Go to https://vercel.com
 2. Sign up or log in (you can use your GitHub account for easy integration)
 3. If using GitHub, authorize Vercel to access your repositories
 
-### 7.3: Import Your Project
+### 8.3: Import Your Project
 
 1. **Import Repository:**
    - Click "Add New..." → "Project"
@@ -183,7 +298,7 @@ The app will be available at http://localhost:3000
      **Important for NEXT_PUBLIC_APP_URL:**
      - **Skip this for now** - You'll set it after the first deployment
      - This variable is used to generate dashboard links for participants
-     - You'll update it in Step 7.5 after you get your production URL
+     - You'll update it in Step 8.5 after you get your production URL
 
      **Optional Variables:**
      ```
@@ -204,11 +319,14 @@ The app will be available at http://localhost:3000
      # On Mac/Linux:
      openssl rand -base64 32
      
+     # On Windows (PowerShell):
+     -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | % {[char]$_})
+     
      # Or use an online generator: https://randomkeygen.com/
      ```
    - Add it as an environment variable in Vercel
 
-### 7.4: Deploy
+### 8.4: Deploy
 
 1. **Click "Deploy"**
    - Vercel will:
@@ -229,7 +347,7 @@ The app will be available at http://localhost:3000
    - Once deployed, Vercel will show you a URL like: `https://your-project.vercel.app`
    - This is your production URL!
 
-### 7.5: Update NEXT_PUBLIC_APP_URL (REQUIRED)
+### 8.5: Update NEXT_PUBLIC_APP_URL (REQUIRED)
 
 **You MUST set this after deployment** - Dashboard links won't work correctly without it!
 
@@ -256,39 +374,7 @@ The app will be available at http://localhost:3000
 - Without it, dashboard links will point to `http://localhost:3000` (which won't work)
 - After setting this, all new registrations will get correct dashboard links
 
-### 7.6: Set Up Cron Jobs
-
-1. **Verify Cron Configuration:**
-   - Your `vercel.json` file should already have cron jobs configured:
-     ```json
-     {
-       "crons": [
-         {
-           "path": "/api/cron/sync-videos",
-           "schedule": "0 * * * *"
-         },
-         {
-           "path": "/api/cron/roblox-ccu",
-           "schedule": "*/5 * * * *"
-         }
-       ]
-     }
-     ```
-
-2. **Enable Cron Jobs in Vercel:**
-   - Go to your project in Vercel dashboard
-   - Click on "Settings" → "Cron Jobs"
-   - Vercel should automatically detect cron jobs from `vercel.json`
-   - If not showing, you may need to:
-     - Redeploy your project
-     - Or manually add them in Vercel dashboard
-
-3. **Secure Cron Jobs (Recommended):**
-   - In your cron job routes, add authentication using `CRON_SECRET`
-   - The routes already check for `CRON_SECRET` if it's set
-   - Make sure `CRON_SECRET` is set in Vercel environment variables
-
-### 7.7: Post-Deployment Checklist
+### 8.6: Post-Deployment Checklist
 
 1. **Test Your Production Site:**
    - Visit your production URL
@@ -301,36 +387,223 @@ The app will be available at http://localhost:3000
    - Check if it saves to your Supabase database
    - View in Supabase dashboard: Table Editor → `Participant` table
 
-3. **Test Cron Jobs:**
-   - Wait for the cron job to run (or trigger manually)
-   - For manual testing, visit:
-     - `https://your-project.vercel.app/api/cron/sync-videos`
-     - `https://your-project.vercel.app/api/cron/roblox-ccu`
-   - Check Vercel logs to see if cron jobs are running
-
-4. **Set Up Custom Domain (Optional):**
+3. **Set Up Custom Domain (Optional):**
    - In Vercel project settings → "Domains"
    - Add your custom domain
    - Follow DNS configuration instructions
 
-### 7.8: Monitor and Maintain
+---
 
-1. **View Logs:**
-   - Go to Vercel dashboard → Your project → "Logs"
-   - Monitor for errors or issues
+## Step 9: Set Up Cron Jobs
 
-2. **Check Cron Job Status:**
-   - Vercel dashboard → Your project → "Cron Jobs"
-   - See execution history and status
+Vercel's free Hobby plan only allows daily cron jobs. For more frequent syncing (every 5 minutes), you'll need to use an external cron service.
 
-3. **Database Monitoring:**
-   - Monitor your Supabase database usage
-   - Check connection pool usage
-   - Review query performance if needed
+### 9.1: Vercel Cron Jobs (Daily - Free)
 
-### Troubleshooting Deployment
+Your `vercel.json` file should already have cron jobs configured:
 
-**Build Fails:**
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-videos",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/roblox-ccu",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
+```
+
+**Note:** On Vercel Hobby plan, the minimum schedule is daily (`0 0 * * *`). The hourly schedule above requires Vercel Pro.
+
+**Enable Cron Jobs in Vercel:**
+- Go to your project in Vercel dashboard
+- Click on "Settings" → "Cron Jobs"
+- Vercel should automatically detect cron jobs from `vercel.json`
+- If not showing, you may need to:
+  - Redeploy your project
+  - Or manually add them in Vercel dashboard
+
+### 9.2: External Cron Service (5-Minute Sync - Free)
+
+For more frequent syncing, use an external cron service like cron-job.org:
+
+#### Option 1: Using cron-job.org (Recommended - Free)
+
+1. **Sign Up:**
+   - Go to https://cron-job.org
+   - Click "Sign Up" (free account)
+   - Verify your email
+
+2. **Create Cron Job for Video Sync:**
+   - Click "Create cronjob"
+   - **Title:** `TikTok Challenge - Video Sync`
+   - **Address (URL):** `https://your-project.vercel.app/api/cron/sync-videos`
+     - Replace `your-project` with your actual Vercel project name
+   - **Schedule:** 
+     - Select "Every X minutes"
+     - Enter `5` minutes
+   - **Request Method:** GET
+   - **Request Headers (if using CRON_SECRET):**
+     - Click "Add Header"
+     - Name: `Authorization`
+     - Value: `Bearer YOUR_CRON_SECRET`
+     - (Only if you set CRON_SECRET in Vercel)
+   - Click "Create cronjob"
+
+3. **Create Cron Job for Roblox CCU:**
+   - Click "Create cronjob" again
+   - **Title:** `TikTok Challenge - Roblox CCU`
+   - **Address (URL):** `https://your-project.vercel.app/api/cron/roblox-ccu`
+   - **Schedule:** Every `5` minutes
+   - **Request Method:** GET
+   - **Request Headers (if using CRON_SECRET):** Same as above
+   - Click "Create cronjob"
+
+4. **Test the Cron Jobs:**
+   - Click "Run now" on each cron job to test
+   - Check Vercel logs to verify they're working
+   - Check your database to see if videos are syncing
+
+#### Option 2: Using EasyCron (Alternative)
+
+1. Sign up at https://www.easycron.com (free tier available)
+2. Similar setup process
+3. Create cron jobs with 5-minute intervals
+
+#### Option 3: Using GitHub Actions (Free, but more complex)
+
+If you want to keep everything in your codebase, you can use GitHub Actions:
+
+1. Create `.github/workflows/sync-videos.yml`:
+   ```yaml
+   name: Sync Videos
+   on:
+     schedule:
+       - cron: '*/5 * * * *'  # Every 5 minutes
+     workflow_dispatch:  # Allow manual trigger
+   
+   jobs:
+     sync:
+       runs-on: ubuntu-latest
+       steps:
+         - name: Trigger Video Sync
+           run: |
+             curl -X GET "https://your-project.vercel.app/api/cron/sync-videos" \
+               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+   ```
+
+2. Add `CRON_SECRET` to GitHub Secrets
+
+### 9.3: Secure Cron Jobs (Recommended)
+
+If you want to secure your cron endpoints:
+
+1. **Generate a secret:**
+   ```bash
+   # On Mac/Linux:
+   openssl rand -base64 32
+   
+   # On Windows (PowerShell):
+   -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | % {[char]$_})
+   ```
+
+2. **Add to Vercel:**
+   - Go to Vercel → Your Project → Settings → Environment Variables
+   - Add `CRON_SECRET` with your generated value
+   - Select: Production, Preview
+
+3. **Add to External Cron Service:**
+   - In cron-job.org, add header:
+     - Name: `Authorization`
+     - Value: `Bearer YOUR_CRON_SECRET`
+
+### 9.4: Monitoring Cron Jobs
+
+- **Check cron-job.org dashboard:** See execution history and status
+- **Check Vercel logs:** View API logs to see if requests are coming through
+- **Check database:** Verify videos are being synced
+
+### 9.5: Cron Job Alternatives Summary
+
+| Option | Frequency | Cost | Setup Complexity |
+|--------|-----------|------|------------------|
+| Vercel Hobby | Daily | Free | Easy (automatic) |
+| Vercel Pro | Hourly | ~$20/month | Easy (automatic) |
+| cron-job.org | Every 5 min | Free | Easy |
+| EasyCron | Every 5 min | Free tier | Easy |
+| GitHub Actions | Every 5 min | Free | Medium |
+
+**Recommended Setup:**
+- Use **cron-job.org** for 5-minute sync (easiest, free)
+- Keep Vercel daily cron as backup (in case external service fails)
+- Add CRON_SECRET for security
+
+---
+
+## Troubleshooting
+
+### Database Connection Issues
+
+- Verify your `DATABASE_URL` is correct
+- Check that your Supabase project is active
+- Ensure the password in the connection string matches your database password
+- Verify both URLs are correct and match what Supabase shows
+- Check project status: Ensure your Supabase project is active and not paused
+- If you get connection limit errors, make sure you're using the pooled connection (port 6543) for `DATABASE_URL`
+
+### YouTube API Errors
+
+- Verify your API key is correct
+- Check API quota limits in Google Cloud Console
+- Ensure YouTube Data API v3 is enabled
+
+### TikTok API Not Working
+
+- Verify your `.env` file exists in the root directory
+- Check that variable names are exactly: `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET`
+- Ensure there are no extra spaces around the `=` sign
+- Restart your development server after updating `.env`
+- The current code in `lib/api/tiktok.ts` shows that the OAuth flow is not yet fully implemented
+- The system will fall back to manual submission mode if the API is not available
+
+### Prisma Errors
+
+- Run `npm run db:generate` again
+- Try `npm run db:push` to sync schema
+- Check that `DATABASE_URL` is set correctly
+
+### Cron Jobs Not Running
+
+- Verify `vercel.json` is in the root directory
+- Check Vercel cron jobs are enabled
+- Verify `CRON_SECRET` is set if you're using it
+- Check cron job logs in Vercel dashboard
+- For external cron services:
+  - Verify the URL is correct (test by visiting it in browser)
+  - Check if CRON_SECRET matches (if using it)
+  - Check Vercel logs for errors
+  - Make sure the schedule is set correctly
+  - Check that the cron job is enabled (toggle should be ON)
+
+### Getting 401 Unauthorized (Cron Jobs)
+
+- Make sure CRON_SECRET is set in both Vercel and external cron service
+- Verify the Authorization header format: `Bearer YOUR_SECRET`
+- The secret must be exactly the same in both places
+
+### Videos Not Syncing
+
+- Check Vercel function logs
+- Verify `YOUTUBE_API_KEY` is set in Vercel
+- Check if participants have registered channels
+- Verify database connection is working
+
+### Build Fails (Deployment)
+
 - Check build logs in Vercel
 - Common issues:
   - Missing environment variables
@@ -338,45 +611,20 @@ The app will be available at http://localhost:3000
   - Missing dependencies
   - Database connection issues
 
-**Cron Jobs Not Running:**
-- Verify `vercel.json` is in the root directory
-- Check Vercel cron jobs are enabled
-- Verify `CRON_SECRET` is set if you're using it
-- Check cron job logs in Vercel dashboard
+### Environment Variables Not Working
 
-**Database Connection Errors:**
-- Verify `DATABASE_URL` and `DIRECT_URL` are correct in Vercel
-- Check Supabase project is active
-- Verify connection strings have correct passwords
-- Check Supabase connection pool limits
-
-**Environment Variables Not Working:**
 - Make sure variables are set for "Production" environment
 - Redeploy after adding new variables
 - Check variable names match exactly (case-sensitive)
 
-## Troubleshooting
-
-### Database Connection Issues
-- Verify your `DATABASE_URL` is correct
-- Check that your Supabase project is active
-- Ensure the password in the connection string matches your database password
-
-### YouTube API Errors
-- Verify your API key is correct
-- Check API quota limits in Google Cloud Console
-- Ensure YouTube Data API v3 is enabled
-
-### Prisma Errors
-- Run `npm run db:generate` again
-- Try `npm run db:push` to sync schema
-- Check that `DATABASE_URL` is set correctly
+---
 
 ## Next Steps After Setup
 
 1. **Configure Cron Jobs:**
    - In Vercel, verify cron jobs are set up (check Vercel dashboard)
    - Add `CRON_SECRET` environment variable for security
+   - Set up external cron service if you need 5-minute sync
 
 2. **Test Video Syncing:**
    - Register a participant with a YouTube channel
@@ -388,3 +636,34 @@ The app will be available at http://localhost:3000
    - Adjust Robux budget in `lib/robux.ts` (currently 50,000)
    - Customize eligibility rules in `lib/eligibility.ts`
 
+4. **Monitor:**
+   - View logs in Vercel dashboard
+   - Check cron job status
+   - Monitor database usage in Supabase
+   - Review query performance if needed
+
+---
+
+## Quick Reference Checklist
+
+- [ ] Supabase project created
+- [ ] Database connection strings copied and added to `.env`
+- [ ] Environment variables file created
+- [ ] YouTube API key obtained and added
+- [ ] TikTok API credentials added (optional)
+- [ ] Database schema pushed (`npm run db:push`)
+- [ ] Local development server running (`npm run dev`)
+- [ ] Registration tested
+- [ ] Admin login tested
+- [ ] Code pushed to GitHub
+- [ ] Project imported to Vercel
+- [ ] All environment variables added to Vercel
+- [ ] First deployment successful
+- [ ] `NEXT_PUBLIC_APP_URL` set in Vercel
+- [ ] Cron jobs configured (Vercel or external service)
+- [ ] Production site tested
+- [ ] Database connection verified in production
+
+---
+
+**Need more help?** Check the code comments or refer to the implementation details in the codebase.

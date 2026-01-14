@@ -82,8 +82,8 @@ export async function POST(request: NextRequest) {
       data: {
         displayName: validated.displayName.trim(),
         email: validated.email && validated.email.trim() ? validated.email.trim() : null,
-        discordUsername: discordUsername,
-        discordAvatarUrl: discordValidation.avatarUrl || null,
+        discordUsername,
+        discordAvatarUrl: discordValidation.avatarUrl ?? null,
         channels: {
           create: [
             ...(tiktokHandle ? [{

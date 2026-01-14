@@ -1,11 +1,8 @@
 import { LeaderboardTable, LeaderboardEntry } from "@/components/LeaderboardTable"
-import { RobuxCard } from "@/components/RobuxCard"
-import { CCUPoller } from "@/components/CCUPoller"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import Link from "next/link"
-import { Separator } from "@/components/ui/separator"
+import { GameIcon } from "@/components/GameIcon"
+import { RobuxIcon } from "@/components/RobuxIcon"
+import { Card, CardContent } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import { headers } from "next/headers"
 
 function getBaseUrl(): string {
@@ -30,10 +27,10 @@ function getBaseUrl(): string {
   return "http://localhost:3000"
 }
 
-async function getLeaderboard(platform: "tiktok" | "youtube"): Promise<LeaderboardEntry[]> {
+async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   try {
     const baseUrl = getBaseUrl()
-    const res = await fetch(`${baseUrl}/api/leaderboard?platform=${platform}`, {
+    const res = await fetch(`${baseUrl}/api/leaderboard`, {
       cache: "no-store",
     })
     if (!res.ok) return []
@@ -56,90 +53,89 @@ async function getRobuxStats() {
 }
 
 export default async function HomePage() {
-  const [tiktokLeaderboard, youtubeLeaderboard, robuxStats] = await Promise.all([
-    getLeaderboard("tiktok"),
-    getLeaderboard("youtube"),
+  const [leaderboard, robuxStats] = await Promise.all([
+    getLeaderboard(),
     getRobuxStats(),
   ])
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="border-b">
-        <div className="container mx-auto px-4 py-16 md:py-24">
-          <div className="max-w-3xl mx-auto text-center space-y-6">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-              One Last Stand
-            </h1>
-            <h2 className="text-2xl md:text-3xl text-muted-foreground">
-              Creator Challenge
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Create content with <span className="font-semibold">#trythemoon</span> and earn Robux!
-              Challenge starts January 24.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <Button asChild size="lg">
-                <Link href="/join">Join the Challenge</Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="/rules">View Rules</Link>
-              </Button>
+      {/* Hero Section with Parallax Background */}
+      <div className="relative w-full overflow-hidden">
+        {/* Parallax Background Image */}
+        {/* 
+          TO ADD YOUR BACKGROUND IMAGE:
+          1. Place your image in the /public folder (e.g., /public/hero-background.jpg)
+          2. Update the backgroundImage URL below to match your filename
+          3. Remove or comment out the placeholder gradient div below
+          4. Recommended image dimensions: 1920x1080 or wider (16:9 aspect ratio works well)
+          5. The image will be automatically darkened with the overlay below for text readability
+        */}
+        <div 
+          className="parallax-bg absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url("/hero-background.webp")',
+          }}
+        >
+        </div>
+        
+        {/* Dark Overlay for text readability */}
+        <div className="absolute inset-0 bg-black/50" />
+        
+        {/* Content Container */}
+        <div className="relative z-10 container mx-auto px-4 pt-12 pb-8 md:pt-16 md:pb-10">
+          {/* Game Icon above title */}
+          <div className="mb-4 flex justify-center">
+            <GameIcon />
+          </div>
+
+          {/* Title centered in the middle of the page */}
+          <div className="mb-2 flex justify-center">
+            <div className="flex items-center gap-3">
+              {/* Robux Icon */}
+              {/* 
+                TO ADD YOUR ROBUX ICON:
+                1. Place your Robux icon image in the /public folder (e.g., /public/robux-icon.png)
+                2. The component will automatically use /robux-icon.png by default
+                3. If you use a different filename, update the src prop in the RobuxIcon component below
+                4. Recommended size: 48x48px to 64x64px (square aspect ratio works best)
+                5. Supported formats: PNG, SVG, WebP, or JPG
+                6. The placeholder (R$ icon) will automatically disappear once your image loads successfully
+              */}
+              <RobuxIcon />
+              <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-white">
+                50k Robux Giveaway
+              </h1>
+            </div>
+          </div>
+
+          {/* Progress bar and remaining text below title */}
+          <div className="flex justify-center">
+            <div className="w-full max-w-sm space-y-2">
+              <Progress value={Math.min(100, ((robuxStats.totalSpent || 0) / 50000) * 100)} className="h-2" />
+              <div className="text-sm text-center text-white">
+                <span className="text-white/80">Remaining </span>
+                <span className={`font-medium ${robuxStats.budgetExceeded ? "text-red-300" : "text-white"}`}>
+                  {(robuxStats.remaining || 50000).toLocaleString()} / 50,000
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats Section */}
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          <RobuxCard
-            totalSpent={robuxStats.totalSpent || 0}
-            remaining={robuxStats.remaining || 50000}
-            budgetExceeded={robuxStats.budgetExceeded || false}
-          />
-          <CCUPoller />
-        </div>
-
-        <Separator className="my-12" />
-
-        {/* Leaderboards */}
-        <div className="space-y-12">
-          <div>
-            <h2 className="text-3xl font-bold mb-6">Leaderboards</h2>
-            <Tabs defaultValue="tiktok" className="w-full">
-              <TabsList className="grid w-full max-w-md grid-cols-2">
-                <TabsTrigger value="tiktok">TikTok</TabsTrigger>
-                <TabsTrigger value="youtube">YouTube</TabsTrigger>
-              </TabsList>
-              <TabsContent value="tiktok" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>TikTok Leaderboard</CardTitle>
-                    <CardDescription>
-                      Ranked by total views from eligible videos
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <LeaderboardTable entries={tiktokLeaderboard} platform="tiktok" />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              <TabsContent value="youtube" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>YouTube Leaderboard</CardTitle>
-                    <CardDescription>
-                      Ranked by total views from eligible videos
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <LeaderboardTable entries={youtubeLeaderboard} platform="youtube" />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
+      {/* Leaderboards Section */}
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-6 flex flex-col items-center">
+          <h2 className="text-3xl font-bold">Leaderboard</h2>
+          <p className="text-muted-foreground text-center">
+            Ranked by total views from eligible videos across TikTok and YouTube
+          </p>
+          <Card className="w-full max-w-4xl">
+            <CardContent className="pt-6">
+              <LeaderboardTable entries={leaderboard} />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

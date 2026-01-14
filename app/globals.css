@@ -36,3 +36,27 @@
   }
 }
 
+/* Parallax effect for hero background */
+.parallax-bg {
+  transform: translateZ(0);
+  will-change: transform;
+  min-height: 100%;
+}
+
+/* Parallax scrolling effect - background stays fixed while content scrolls */
+@media (prefers-reduced-motion: no-preference) {
+  .parallax-bg {
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .parallax-bg {
+    background-attachment: scroll;
+  }
+}
+

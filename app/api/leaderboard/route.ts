@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const platform = searchParams.get('platform') as Platform | null
 
-    if (!platform || (platform !== 'tiktok' && platform !== 'youtube')) {
+    // If platform is specified, validate it
+    if (platform && platform !== 'tiktok' && platform !== 'youtube') {
       return NextResponse.json(
         { error: 'Invalid platform. Must be "tiktok" or "youtube"' },
         { status: 400 }
@@ -17,17 +18,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all participants with their channels and videos
+    // If platform is specified, filter by it; otherwise get all platforms
     const participants = await prisma.participant.findMany({
       include: {
         channels: {
-          where: {
-            platform,
-          },
+          ...(platform ? { where: { platform } } : {}),
           include: {
             videos: {
-              where: {
-                platform,
-              },
+              ...(platform ? { where: { platform } } : {}),
               include: {
                 eligibility: {
                   where: {
@@ -53,6 +51,8 @@ export async function GET(request: NextRequest) {
         return {
           participantId: participant.id,
           displayName: participant.displayName,
+          discordUsername: participant.discordUsername,
+          discordAvatarUrl: participant.discordAvatarUrl,
           channels: channels.map((c) => ({
             platform: c.platform,
             handle: c.handle,
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       }))
 
     return NextResponse.json({
-      platform,
+      platform: platform || 'combined',
       entries,
     })
   } catch (error) {

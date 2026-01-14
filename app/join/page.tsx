@@ -19,12 +19,14 @@ export default function JoinPage() {
   const [formData, setFormData] = useState({
     displayName: "",
     email: "",
+    discordUsername: "",
     tiktokHandle: "",
     youtubeChannel: "",
   })
   const [errors, setErrors] = useState<{
     displayName?: string
     email?: string
+    discordUsername?: string
     tiktokHandle?: string
     youtubeChannel?: string
   }>({})
@@ -35,6 +37,18 @@ export default function JoinPage() {
     // Validate display name (required)
     if (!formData.displayName.trim()) {
       newErrors.displayName = "Display name is required"
+    }
+
+    // Validate Discord username (required)
+    if (!formData.discordUsername.trim()) {
+      newErrors.discordUsername = "Discord username is required"
+    } else {
+      // Validate Discord username format
+      const discordUsername = formData.discordUsername.trim().replace(/^@/, '')
+      const isValidFormat = /^[a-zA-Z0-9_.-]{2,32}(#\d{4})?$/.test(discordUsername)
+      if (!isValidFormat) {
+        newErrors.discordUsername = "Invalid Discord username format. Use username (e.g., 'username') or username#discriminator (e.g., 'username#1234')"
+      }
     }
 
     // Validate email (optional, but must be valid if provided)
@@ -89,6 +103,8 @@ export default function JoinPage() {
               serverErrors.displayName = detail.message
             } else if (detail.field === 'email') {
               serverErrors.email = detail.message
+            } else if (detail.field === 'discordUsername') {
+              serverErrors.discordUsername = detail.message
             } else if (detail.field === 'tiktokHandle') {
               serverErrors.tiktokHandle = detail.message
             } else if (detail.field === 'youtubeChannel') {
@@ -219,6 +235,24 @@ export default function JoinPage() {
               {errors.email && (
                 <p className="text-sm text-red-500">{errors.email}</p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="discordUsername">Discord Username *</Label>
+              <Input
+                id="discordUsername"
+                required
+                value={formData.discordUsername}
+                onChange={(e) => handleInputChange("discordUsername", e.target.value)}
+                placeholder="username or username#1234"
+                className={errors.discordUsername ? "border-red-500 focus-visible:ring-red-500" : ""}
+              />
+              {errors.discordUsername && (
+                <p className="text-sm text-red-500">{errors.discordUsername}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Enter your Discord username (e.g., "username" or "username#1234")
+              </p>
             </div>
 
             <div className="space-y-2">

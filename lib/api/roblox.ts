@@ -6,10 +6,58 @@ interface RobloxGameInfo {
   playing: number
   visits: number
   maxPlayers: number
+  upVotes?: number
+  downVotes?: number
+  percentageRating?: number
 }
 
 let cachedCCU: { value: number; timestamp: number } | null = null
 const CACHE_TTL = 60 * 1000 // 60 seconds
+
+/**
+ * Fetch game stats including CCU and percentage rating
+ */
+export async function fetchRobloxGameStats(placeId?: string): Promise<{ ccu: number; percentageRating: number }> {
+  const targetPlaceId = placeId || ROBLOX_PLACE_ID
+
+  if (!targetPlaceId) {
+    console.warn('ROBLOX_PLACE_ID not configured')
+    return { ccu: 0, percentageRating: 0 }
+  }
+
+  try {
+    const response = await fetch(
+      `https://games.roblox.com/v1/games?universeIds=${targetPlaceId}`,
+      {
+        headers: {
+          'Accept': 'application/json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`Roblox API error: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    const game = data.data?.[0]
+
+    if (!game) {
+      return { ccu: 0, percentageRating: 0 }
+    }
+
+    const ccu = game.playing || 0
+    const upVotes = game.upVotes || 0
+    const downVotes = game.downVotes || 0
+    const totalVotes = upVotes + downVotes
+    const percentageRating = totalVotes > 0 ? Math.round((upVotes / totalVotes) * 100) : 0
+
+    return { ccu, percentageRating }
+  } catch (error) {
+    console.error('Error fetching Roblox game stats:', error)
+    return { ccu: 0, percentageRating: 0 }
+  }
+}
 
 /**
  * Fetch current concurrent users (CCU) for a Roblox game
@@ -109,12 +157,20 @@ export async function getRobloxGameInfo(placeId?: string): Promise<RobloxGameInf
       return null
     }
 
+    const upVotes = game.upVotes || 0
+    const downVotes = game.downVotes || 0
+    const totalVotes = upVotes + downVotes
+    const percentageRating = totalVotes > 0 ? Math.round((upVotes / totalVotes) * 100) : 0
+
     return {
       placeId: targetPlaceId,
       name: game.name || 'Unknown Game',
       playing: game.playing || 0,
       visits: game.visits || 0,
       maxPlayers: game.maxPlayers || 0,
+      upVotes,
+      downVotes,
+      percentageRating,
     }
   } catch (error) {
     console.error('Error fetching Roblox game info:', error)

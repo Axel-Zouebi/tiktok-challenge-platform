@@ -65,6 +65,10 @@ TIKTOK_CLIENT_KEY=your-tiktok-client-key (optional)
 TIKTOK_CLIENT_SECRET=your-tiktok-client-secret (optional)
 ROBLOX_PLACE_ID=your-roblox-place-id (optional)
 
+# Discord (optional, for username validation and avatar fetching)
+DISCORD_BOT_TOKEN=your-discord-bot-token (optional)
+DISCORD_SERVER_ID=your-discord-server-id (optional)
+
 # Admin
 ADMIN_PASSWORD=your-secure-admin-password
 

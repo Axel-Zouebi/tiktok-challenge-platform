@@ -16,6 +16,8 @@ export interface LeaderboardEntry {
   rank: number
   participantId: string
   displayName: string
+  discordUsername?: string
+  discordAvatarUrl?: string | null
   channels: Array<{
     platform: Platform
     handle?: string | null
@@ -28,7 +30,7 @@ export interface LeaderboardEntry {
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[]
-  platform: Platform
+  platform?: Platform
 }
 
 export function LeaderboardTable({ entries, platform }: LeaderboardTableProps) {
@@ -60,7 +62,12 @@ export function LeaderboardTable({ entries, platform }: LeaderboardTableProps) {
       </TableHeader>
       <TableBody>
         {entries.map((entry) => {
-          const channel = entry.channels.find((c) => c.platform === platform)
+          // If platform is specified, show only that platform's channel
+          // Otherwise, show all channels
+          const channelsToShow = platform 
+            ? entry.channels.filter((c) => c.platform === platform)
+            : entry.channels
+
           return (
             <TableRow 
               key={entry.participantId}
@@ -68,16 +75,40 @@ export function LeaderboardTable({ entries, platform }: LeaderboardTableProps) {
               onClick={() => handleRowClick(entry.participantId)}
             >
               <TableCell className="font-medium">#{entry.rank}</TableCell>
-              <TableCell className="font-medium">{entry.displayName}</TableCell>
+              <TableCell className="font-medium">
+                <div className="flex items-center gap-3">
+                  {entry.discordAvatarUrl ? (
+                    <img
+                      src={entry.discordAvatarUrl}
+                      alt={entry.displayName}
+                      className="w-8 h-8 rounded-full object-cover"
+                      onError={(e) => {
+                        // Fallback to default Discord avatar if image fails to load
+                        const target = e.target as HTMLImageElement
+                        target.src = `https://cdn.discordapp.com/embed/avatars/${(entry.rank % 5)}.png`
+                      }}
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                      {entry.displayName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span>{entry.displayName}</span>
+                </div>
+              </TableCell>
               <TableCell>
-                {channel ? (
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">
-                      {platform === "tiktok" ? "TikTok" : "YouTube"}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {channel.handle || "N/A"}
-                    </span>
+                {channelsToShow.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {channelsToShow.map((channel) => (
+                      <div key={channel.platform} className="flex items-center gap-2">
+                        <Badge variant="outline">
+                          {channel.platform === "tiktok" ? "TikTok" : "YouTube"}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {channel.handle || "N/A"}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <span className="text-sm text-muted-foreground">—</span>

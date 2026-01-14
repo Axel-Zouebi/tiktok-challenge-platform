@@ -17,12 +17,14 @@ enum Platform {
 }
 
 model Participant {
-  id            String    @id @default(uuid())
-  displayName   String
-  email         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  channels      Channel[]
+  id              String    @id @default(uuid())
+  displayName     String
+  email           String?
+  discordUsername String
+  discordAvatarUrl String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  channels        Channel[]
 }
 
 model Channel {

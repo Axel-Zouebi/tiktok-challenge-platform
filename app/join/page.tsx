@@ -50,8 +50,13 @@ export default function JoinPage() {
       setSuccess(true)
       toast({
         title: "Registration successful!",
-        description: "Your dashboard link has been generated.",
+        description: "Redirecting to your dashboard...",
       })
+      
+      // Redirect to dashboard after a short delay
+      setTimeout(() => {
+        router.push(data.dashboardUrl)
+      }, 1500)
     } catch (error) {
       toast({
         title: "Registration failed",
@@ -96,7 +101,7 @@ export default function JoinPage() {
             </div>
             <div className="flex gap-2">
               <Button asChild className="flex-1">
-                <Link href={dashboardUrl}>Go to Dashboard</Link>
+                <Link href={dashboardUrl || "/dashboard"}>Go to Dashboard</Link>
               </Button>
               <Button asChild variant="outline" className="flex-1">
                 <Link href="/">Back to Home</Link>

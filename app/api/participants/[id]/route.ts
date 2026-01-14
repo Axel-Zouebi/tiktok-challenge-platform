@@ -7,13 +7,13 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { token } = params
+    const { id } = params
 
     const participant = await prisma.participant.findUnique({
-      where: { dashboardToken: token },
+      where: { id },
       include: {
         channels: {
           include: {

@@ -5,10 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function generateToken(): string {
-  return crypto.randomUUID()
-}
-
 export function extractYouTubeChannelId(urlOrId: string): string | null {
   // Handle direct channel ID
   if (!urlOrId.includes('/') && !urlOrId.includes('?')) {

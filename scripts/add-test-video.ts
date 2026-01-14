@@ -135,7 +135,7 @@ async function addTestVideo() {
 
     console.log('\n✅ Video successfully added to database!')
     console.log(`\nYou can now view it in the participant dashboard at:`)
-    console.log(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/p/${channel.participant.dashboardToken}`)
+    console.log(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?id=${channel.participant.id}`)
 
   } catch (error) {
     console.error('Error adding test video:', error)

@@ -1,3 +1,5 @@
+"use client"
+
 import {
   Table,
   TableBody,
@@ -8,6 +10,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Platform } from "@prisma/client"
+import { useRouter } from "next/navigation"
 
 export interface LeaderboardEntry {
   rank: number
@@ -29,12 +32,18 @@ interface LeaderboardTableProps {
 }
 
 export function LeaderboardTable({ entries, platform }: LeaderboardTableProps) {
+  const router = useRouter()
+
   if (entries.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         No participants yet
       </div>
     )
+  }
+
+  const handleRowClick = (participantId: string) => {
+    router.push(`/dashboard?id=${participantId}`)
   }
 
   return (
@@ -53,7 +62,11 @@ export function LeaderboardTable({ entries, platform }: LeaderboardTableProps) {
         {entries.map((entry) => {
           const channel = entry.channels.find((c) => c.platform === platform)
           return (
-            <TableRow key={entry.participantId}>
+            <TableRow 
+              key={entry.participantId}
+              className="cursor-pointer hover:bg-accent transition-colors"
+              onClick={() => handleRowClick(entry.participantId)}
+            >
               <TableCell className="font-medium">#{entry.rank}</TableCell>
               <TableCell className="font-medium">{entry.displayName}</TableCell>
               <TableCell>

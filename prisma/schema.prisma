@@ -20,12 +20,9 @@ model Participant {
   id            String    @id @default(uuid())
   displayName   String
   email         String?
-  dashboardToken String   @unique @default(uuid())
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   channels      Channel[]
-
-  @@index([dashboardToken])
 }
 
 model Channel {

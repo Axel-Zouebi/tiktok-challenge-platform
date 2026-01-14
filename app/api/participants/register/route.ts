@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { generateToken, extractYouTubeChannelId, extractTikTokHandle } from '@/lib/utils'
+import { extractYouTubeChannelId, extractTikTokHandle } from '@/lib/utils'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -34,9 +34,6 @@ export async function POST(request: NextRequest) {
     
     const validated = registerSchema.parse(body)
 
-    // Generate unique dashboard token
-    const dashboardToken = generateToken()
-
     // Extract channel IDs/handles
     const tiktokHandle = validated.tiktokHandle && validated.tiktokHandle.trim() 
       ? extractTikTokHandle(validated.tiktokHandle.trim()) 
@@ -65,7 +62,6 @@ export async function POST(request: NextRequest) {
       data: {
         displayName: validated.displayName.trim(),
         email: validated.email && validated.email.trim() ? validated.email.trim() : null,
-        dashboardToken,
         channels: {
           create: [
             ...(tiktokHandle ? [{
@@ -92,16 +88,16 @@ export async function POST(request: NextRequest) {
     const protocol = forwardedProto || (request.nextUrl.protocol?.replace(':', '') || 'http')
     const host = request.headers.get('host') || request.nextUrl.host
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`
-    const dashboardUrl = `${baseUrl}/p/${dashboardToken}`
+    const dashboardUrl = `${baseUrl}/dashboard?id=${participant.id}`
 
     return NextResponse.json({
       success: true,
       participant: {
         id: participant.id,
         displayName: participant.displayName,
-        dashboardToken: participant.dashboardToken,
       },
       dashboardUrl,
+      participantId: participant.id,
     })
   } catch (error) {
     if (error instanceof z.ZodError) {

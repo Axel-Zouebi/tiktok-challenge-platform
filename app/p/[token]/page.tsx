@@ -259,47 +259,10 @@ export default function ParticipantDashboardPage() {
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">Your Videos</h2>
-            <div className="flex gap-2">
-              {data.videos.length === 0 && (
-                <Button 
-                  onClick={async () => {
-                    try {
-                      const response = await fetch(`/api/participants/${token}/add-test-video`, {
-                        method: 'POST',
-                      })
-                      const result = await response.json()
-                      if (response.ok) {
-                        toast({
-                          title: "Success!",
-                          description: "Test video added. Refreshing...",
-                        })
-                        setTimeout(() => fetchData(), 1000)
-                      } else {
-                        toast({
-                          title: "Error",
-                          description: result.error || "Failed to add test video",
-                          variant: "destructive",
-                        })
-                      }
-                    } catch (error) {
-                      toast({
-                        title: "Error",
-                        description: "Failed to add test video",
-                        variant: "destructive",
-                      })
-                    }
-                  }}
-                  variant="default"
-                  size="sm"
-                >
-                  Add Test Video
-                </Button>
-              )}
-              <Button onClick={fetchData} variant="outline" size="sm">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
+            <Button onClick={fetchData} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
           </div>
 
           <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>

@@ -170,16 +170,33 @@ export async function lookupDiscordUserInServer(
   
   try {
     // Search for user in server (requires bot to be in the server)
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+    
     const response = await fetch(
       `${DISCORD_API_BASE}/guilds/${serverId}/members/search?query=${encodeURIComponent(normalizedUsername)}`,
       {
         headers: {
           'Authorization': `Bot ${DISCORD_BOT_TOKEN}`,
         },
+        signal: controller.signal,
       }
     )
 
+    clearTimeout(timeoutId)
+
     if (!response.ok) {
+      // Log non-OK responses for debugging
+      if (response.status === 401) {
+        console.error('Discord API: Unauthorized - check DISCORD_BOT_TOKEN')
+      } else if (response.status === 403) {
+        console.error('Discord API: Forbidden - bot may not have access to server')
+      } else if (response.status === 404) {
+        console.error('Discord API: Server not found - check DISCORD_SERVER_ID')
+      } else {
+        console.error(`Discord API error: ${response.status} ${response.statusText}`)
+      }
       return null
     }
 
@@ -209,7 +226,12 @@ export async function lookupDiscordUserInServer(
       avatarUrl,
     }
   } catch (error) {
-    console.error(`Error looking up Discord user in server:`, error)
+    // Handle abort errors (timeout)
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('Discord API: Request timeout')
+    } else {
+      console.error(`Error looking up Discord user in server:`, error)
+    }
     return null
   }
 }

@@ -40,7 +40,7 @@ export function GameIcon({ gameIconUrl, robloxGameUrl }: GameIconProps) {
   const handleClick = () => {
     const placeId = process.env.NEXT_PUBLIC_ROBLOX_PLACE_ID
     const defaultGameUrl = robloxGameUrl || 
-      (placeId ? `https://www.roblox.com/games/${placeId}` : "#")
+      (placeId ? `https://www.roblox.com/games/${placeId}` : "https://www.roblox.com/games/118678904542604/One-Last-Stand")
     
     if (defaultGameUrl !== "#") {
       window.open(defaultGameUrl, "_blank", "noopener,noreferrer")

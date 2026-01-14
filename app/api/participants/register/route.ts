@@ -29,7 +29,19 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    let body
+    try {
+      body = await request.json()
+    } catch (jsonError) {
+      console.error('JSON parsing error:', jsonError)
+      return NextResponse.json(
+        { 
+          error: 'Invalid JSON in request body',
+          details: jsonError instanceof Error ? jsonError.message : 'Failed to parse request body'
+        },
+        { status: 400 }
+      )
+    }
     
     // Log for debugging (remove in production)
     console.log('Registration request body:', body)
@@ -39,7 +51,19 @@ export async function POST(request: NextRequest) {
     // Validate and normalize Discord username
     const discordUsername = normalizeDiscordUsername(validated.discordUsername)
     const discordServerId = process.env.DISCORD_SERVER_ID
-    const discordValidation = await validateDiscordUserExists(discordUsername, discordServerId)
+    
+    let discordValidation
+    try {
+      discordValidation = await validateDiscordUserExists(discordUsername, discordServerId)
+    } catch (discordError) {
+      console.error('Discord validation error:', discordError)
+      // If Discord validation fails due to API error, still allow registration
+      // but log the error for debugging
+      discordValidation = {
+        exists: true, // Fallback to allowing registration
+        avatarUrl: undefined,
+      }
+    }
     
     if (!discordValidation.exists) {
       return NextResponse.json(
@@ -122,6 +146,14 @@ export async function POST(request: NextRequest) {
       participantId: participant.id,
     })
   } catch (error) {
+    // Log full error details for debugging
+    console.error('Registration error:', {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    })
+
     if (error instanceof z.ZodError) {
       console.error('Validation error:', error.errors)
       return NextResponse.json(
@@ -136,23 +168,57 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if it's a Prisma error (database connection issue)
-    if (error && typeof error === 'object' && 'code' in error) {
-      console.error('Database error:', error)
-      return NextResponse.json(
-        { 
-          error: 'Database connection error. Please check your database configuration.',
-          details: process.env.NODE_ENV === 'development' ? String(error) : undefined
-        },
-        { status: 500 }
-      )
+    // Check if it's a Prisma error
+    if (error && typeof error === 'object') {
+      const prismaError = error as any
+      
+      // Prisma connection errors
+      if (prismaError.code === 'P1001' || prismaError.code === 'P1000') {
+        console.error('Database connection error:', prismaError)
+        return NextResponse.json(
+          { 
+            error: 'Database connection error. Please check your database configuration.',
+            details: process.env.NODE_ENV === 'development' ? prismaError.message : undefined
+          },
+          { status: 500 }
+        )
+      }
+      
+      // Prisma unique constraint errors
+      if (prismaError.code === 'P2002') {
+        console.error('Unique constraint error:', prismaError)
+        const field = prismaError.meta?.target?.[0] || 'field'
+        return NextResponse.json(
+          { 
+            error: `A participant with this ${field} already exists.`,
+            details: [{
+              field,
+              message: `This ${field} is already registered.`
+            }]
+          },
+          { status: 409 }
+        )
+      }
+      
+      // Other Prisma errors
+      if (prismaError.code && prismaError.code.startsWith('P')) {
+        console.error('Prisma error:', prismaError)
+        return NextResponse.json(
+          { 
+            error: 'Database error occurred',
+            details: process.env.NODE_ENV === 'development' ? prismaError.message : undefined
+          },
+          { status: 500 }
+        )
+      }
     }
 
-    console.error('Registration error:', error)
+    // Generic error handling
+    const errorMessage = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
       { 
         error: 'Failed to register participant',
-        details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        details: process.env.NODE_ENV === 'development' ? errorMessage : 'An unexpected error occurred. Please try again later.'
       },
       { status: 500 }
     )

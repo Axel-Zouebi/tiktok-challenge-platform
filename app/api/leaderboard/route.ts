@@ -64,7 +64,6 @@ export async function GET(request: NextRequest) {
           robuxEarned,
         }
       })
-      .filter((entry) => entry.totalViews > 0) // Only include participants with videos
       .sort((a, b) => b.totalViews - a.totalViews)
       .map((entry, index) => ({
         ...entry,

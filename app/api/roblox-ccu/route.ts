@@ -28,6 +28,8 @@ export async function GET() {
     const stats = await fetchRobloxGameStats()
     const placeId = process.env.ROBLOX_PLACE_ID || null
 
+    console.log('Fetched stats:', { ccu: stats.ccu, percentageRating: stats.percentageRating, placeId })
+
     // Store in database (only CCU is stored)
     await prisma.robloxMetrics.create({
       data: {

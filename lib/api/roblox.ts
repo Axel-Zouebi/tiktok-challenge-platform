@@ -44,11 +44,12 @@ export async function fetchRobloxGameStats(placeId?: string): Promise<{ ccu: num
     const placeDetails = placeDetailsData.data?.[0]
 
     if (!placeDetails || !placeDetails.universeId) {
-      console.error('Failed to get universe ID from place ID')
+      console.error('Failed to get universe ID from place ID. Response:', JSON.stringify(placeDetailsData, null, 2))
       return { ccu: 0, percentageRating: 0 }
     }
 
     const universeId = placeDetails.universeId
+    console.log(`Place ID ${targetPlaceId} -> Universe ID ${universeId}`)
 
     // Step 2: Get game stats (CCU) using Universe ID
     const gameStatsResponse = await fetch(
@@ -68,43 +69,75 @@ export async function fetchRobloxGameStats(placeId?: string): Promise<{ ccu: num
     const game = gameStatsData.data?.[0]
 
     if (!game) {
+      console.error('No game data found in response:', JSON.stringify(gameStatsData, null, 2))
       return { ccu: 0, percentageRating: 0 }
     }
 
     const ccu = game.playing || 0
 
     // Step 3: Get votes using Universe ID (this is the correct endpoint for ratings)
-    const votesResponse = await fetch(
-      `https://games.roblox.com/v1/games/votes?universeIds=${universeId}`,
-      {
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
-    )
-
+    // First try the dedicated votes endpoint
     let percentageRating = 0
-    if (votesResponse.ok) {
-      const votesData = await votesResponse.json()
-      const voteEntry = votesData.data?.find((v: any) => v.universeId === universeId)
-
-      if (voteEntry) {
-        const upVotes = voteEntry.upVotes || 0
-        const downVotes = voteEntry.downVotes || 0
-        const totalVotes = upVotes + downVotes
-        
-        if (totalVotes > 0) {
-          percentageRating = Math.round((upVotes / totalVotes) * 100)
+    let upVotes = 0
+    let downVotes = 0
+    
+    try {
+      const votesResponse = await fetch(
+        `https://games.roblox.com/v1/games/votes?universeIds=${universeId}`,
+        {
+          headers: {
+            'Accept': 'application/json',
+          },
         }
+      )
+
+      if (votesResponse.ok) {
+        const votesData = await votesResponse.json()
+        
+        // The votes endpoint returns: { data: [{ universeId, upVotes, downVotes }] }
+        let voteEntry: any = null
+        
+        if (Array.isArray(votesData.data)) {
+          // Find entry matching universeId (handle both string and number comparison)
+          voteEntry = votesData.data.find((v: any) => 
+            String(v.universeId) === String(universeId) || v.universeId === universeId
+          )
+        } else if (votesData.data && typeof votesData.data === 'object' && !Array.isArray(votesData.data)) {
+          // Single object response
+          if (String(votesData.data.universeId) === String(universeId)) {
+            voteEntry = votesData.data
+          }
+        }
+        
+        if (voteEntry) {
+          upVotes = Number(voteEntry.upVotes) || 0
+          downVotes = Number(voteEntry.downVotes) || 0
+          const totalVotes = upVotes + downVotes
+          
+          if (totalVotes > 0) {
+            percentageRating = Math.round((upVotes / totalVotes) * 100)
+            console.log(`Successfully fetched votes: ${upVotes} up, ${downVotes} down = ${percentageRating}%`)
+          }
+        } else {
+          console.warn(`No vote entry found for universeId: ${universeId}`)
+          console.log('Votes response structure:', JSON.stringify(votesData, null, 2))
+        }
+      } else {
+        const errorText = await votesResponse.text().catch(() => 'Unable to read error')
+        console.warn(`Votes endpoint returned ${votesResponse.status}:`, errorText.substring(0, 200))
       }
-    } else {
-      console.warn('Failed to fetch votes, using fallback calculation from game stats')
-      // Fallback: try to get votes from game stats if available
-      const upVotes = game.upVotes || 0
-      const downVotes = game.downVotes || 0
+    } catch (votesError) {
+      console.error('Error fetching votes:', votesError)
+    }
+
+    // Fallback: try to get votes from game stats if votes endpoint didn't work
+    if (percentageRating === 0 && (game.upVotes !== undefined || game.downVotes !== undefined)) {
+      upVotes = Number(game.upVotes) || 0
+      downVotes = Number(game.downVotes) || 0
       const totalVotes = upVotes + downVotes
       if (totalVotes > 0) {
         percentageRating = Math.round((upVotes / totalVotes) * 100)
+        console.log(`Using fallback from game stats: ${percentageRating}%`)
       }
     }
 

@@ -87,7 +87,7 @@ export default async function HomePage() {
         {/* Content Container */}
         <div className="relative z-10 container mx-auto px-4 pt-12 pb-8 md:pt-16 md:pb-10">
           {/* Game Icon above title */}
-          <div className="mb-4 flex flex-col items-center gap-4">
+          <div className="mb-4 flex flex-col items-center gap-2">
             <GameIcon />
             <PlayButton />
           </div>

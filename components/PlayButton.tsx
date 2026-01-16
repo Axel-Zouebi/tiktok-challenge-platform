@@ -21,10 +21,9 @@ export function PlayButton({ robloxGameUrl }: PlayButtonProps) {
   return (
     <Button
       onClick={handleClick}
-      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg w-16 h-16 p-0 flex items-center justify-center shadow-lg"
-      size="icon"
+      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg w-48 h-10 p-0 flex items-center justify-center shadow-lg"
     >
-      <Play className="h-8 w-8 fill-white" />
+      <Play className="h-6 w-6 fill-white" />
     </Button>
   )
 }

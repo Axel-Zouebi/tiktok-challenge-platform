@@ -8,11 +8,9 @@ import { Menu, X } from "lucide-react"
 import { useState } from "react"
 
 const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/join", label: "Join" },
+  { href: "/", label: "Leaderboard" },
   { href: "/rules", label: "Rules" },
-  { href: "/admin", label: "Admin" },
+  { href: "/dashboard", label: "Your videos" },
 ]
 
 export function Navbar() {

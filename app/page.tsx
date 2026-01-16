@@ -1,6 +1,7 @@
 import { LeaderboardTable, LeaderboardEntry } from "@/components/LeaderboardTable"
 import { GameIcon } from "@/components/GameIcon"
 import { RobuxIcon } from "@/components/RobuxIcon"
+import { ChallengeCountdown } from "@/components/ChallengeCountdown"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { headers } from "next/headers"
@@ -120,6 +121,11 @@ export default async function HomePage() {
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Countdown Timer */}
+          <div className="mt-4 flex justify-center">
+            <ChallengeCountdown />
           </div>
         </div>
       </div>

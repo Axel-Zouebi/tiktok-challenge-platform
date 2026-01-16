@@ -47,7 +47,7 @@ export function ChallengeCountdown() {
   }, [])
 
   return (
-    <div className="text-center text-white">
+    <div className="text-center text-white bg-black/50 rounded-lg p-4">
       <div className="text-sm text-white/80 mb-1">Challenge starts in:</div>
       <div className="flex items-center justify-center gap-2 md:gap-4 text-lg md:text-xl font-medium">
         <div className="flex items-center gap-1">

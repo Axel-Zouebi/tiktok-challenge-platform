@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Platform } from '@prisma/client'
+import { lookupDiscordUserInServer } from '@/lib/api/discord'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +39,49 @@ export async function GET(request: NextRequest) {
         },
       },
     })
+
+    // Try to fetch missing Discord avatars
+    const discordServerId = process.env.DISCORD_SERVER_ID
+    const participantsToUpdate = participants.filter(
+      (p) => !p.discordAvatarUrl && p.discordUsername
+    )
+
+    // Update avatars in parallel with a timeout
+    if (discordServerId && participantsToUpdate.length > 0) {
+      try {
+        // Wait up to 3 seconds for avatar fetches
+        await Promise.race([
+          Promise.all(
+            participantsToUpdate.map(async (participant) => {
+              try {
+                const userInfo = await lookupDiscordUserInServer(
+                  participant.discordUsername,
+                  discordServerId
+                )
+                if (userInfo && userInfo.avatarUrl) {
+                  await prisma.participant.update({
+                    where: { id: participant.id },
+                    data: { discordAvatarUrl: userInfo.avatarUrl },
+                  })
+                  // Update the participant object in memory for this response
+                  participant.discordAvatarUrl = userInfo.avatarUrl
+                }
+              } catch (error) {
+                // Silently fail for individual participants
+                console.error(
+                  `Failed to fetch Discord avatar for ${participant.discordUsername}:`,
+                  error
+                )
+              }
+            })
+          ),
+          new Promise((resolve) => setTimeout(resolve, 3000)), // 3 second timeout
+        ])
+      } catch (error) {
+        // Don't block the leaderboard response if avatar fetching fails
+        console.error('Error fetching Discord avatars:', error)
+      }
+    }
 
     // Calculate leaderboard entries
     const entries = participants

@@ -2,6 +2,7 @@ import { LeaderboardTable, LeaderboardEntry } from "@/components/LeaderboardTabl
 import { GameIcon } from "@/components/GameIcon"
 import { RobuxIcon } from "@/components/RobuxIcon"
 import { ChallengeCountdown } from "@/components/ChallengeCountdown"
+import { PlayButton } from "@/components/PlayButton"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { headers } from "next/headers"
@@ -86,8 +87,9 @@ export default async function HomePage() {
         {/* Content Container */}
         <div className="relative z-10 container mx-auto px-4 pt-12 pb-8 md:pt-16 md:pb-10">
           {/* Game Icon above title */}
-          <div className="mb-4 flex justify-center">
+          <div className="mb-4 flex flex-col items-center gap-4">
             <GameIcon />
+            <PlayButton />
           </div>
 
           {/* Title centered in the middle of the page */}

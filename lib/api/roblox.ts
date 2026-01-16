@@ -26,8 +26,9 @@ export async function fetchRobloxGameStats(placeId?: string): Promise<{ ccu: num
   }
 
   try {
-    const response = await fetch(
-      `https://games.roblox.com/v1/games?universeIds=${targetPlaceId}`,
+    // Step 1: Get Universe ID from Place ID
+    const placeDetailsResponse = await fetch(
+      `https://games.roblox.com/v1/games/multiget-place-details?placeIds=${targetPlaceId}`,
       {
         headers: {
           'Accept': 'application/json',
@@ -35,22 +36,77 @@ export async function fetchRobloxGameStats(placeId?: string): Promise<{ ccu: num
       }
     )
 
-    if (!response.ok) {
-      throw new Error(`Roblox API error: ${response.statusText}`)
+    if (!placeDetailsResponse.ok) {
+      throw new Error(`Roblox API error: ${placeDetailsResponse.statusText}`)
     }
 
-    const data = await response.json()
-    const game = data.data?.[0]
+    const placeDetailsData = await placeDetailsResponse.json()
+    const placeDetails = placeDetailsData.data?.[0]
+
+    if (!placeDetails || !placeDetails.universeId) {
+      console.error('Failed to get universe ID from place ID')
+      return { ccu: 0, percentageRating: 0 }
+    }
+
+    const universeId = placeDetails.universeId
+
+    // Step 2: Get game stats (CCU) using Universe ID
+    const gameStatsResponse = await fetch(
+      `https://games.roblox.com/v1/games?universeIds=${universeId}`,
+      {
+        headers: {
+          'Accept': 'application/json',
+        },
+      }
+    )
+
+    if (!gameStatsResponse.ok) {
+      throw new Error(`Roblox API error: ${gameStatsResponse.statusText}`)
+    }
+
+    const gameStatsData = await gameStatsResponse.json()
+    const game = gameStatsData.data?.[0]
 
     if (!game) {
       return { ccu: 0, percentageRating: 0 }
     }
 
     const ccu = game.playing || 0
-    const upVotes = game.upVotes || 0
-    const downVotes = game.downVotes || 0
-    const totalVotes = upVotes + downVotes
-    const percentageRating = totalVotes > 0 ? Math.round((upVotes / totalVotes) * 100) : 0
+
+    // Step 3: Get votes using Universe ID (this is the correct endpoint for ratings)
+    const votesResponse = await fetch(
+      `https://games.roblox.com/v1/games/votes?universeIds=${universeId}`,
+      {
+        headers: {
+          'Accept': 'application/json',
+        },
+      }
+    )
+
+    let percentageRating = 0
+    if (votesResponse.ok) {
+      const votesData = await votesResponse.json()
+      const voteEntry = votesData.data?.find((v: any) => v.universeId === universeId)
+
+      if (voteEntry) {
+        const upVotes = voteEntry.upVotes || 0
+        const downVotes = voteEntry.downVotes || 0
+        const totalVotes = upVotes + downVotes
+        
+        if (totalVotes > 0) {
+          percentageRating = Math.round((upVotes / totalVotes) * 100)
+        }
+      }
+    } else {
+      console.warn('Failed to fetch votes, using fallback calculation from game stats')
+      // Fallback: try to get votes from game stats if available
+      const upVotes = game.upVotes || 0
+      const downVotes = game.downVotes || 0
+      const totalVotes = upVotes + downVotes
+      if (totalVotes > 0) {
+        percentageRating = Math.round((upVotes / totalVotes) * 100)
+      }
+    }
 
     return { ccu, percentageRating }
   } catch (error) {
@@ -137,8 +193,9 @@ export async function getRobloxGameInfo(placeId?: string): Promise<RobloxGameInf
   }
 
   try {
-    const response = await fetch(
-      `https://games.roblox.com/v1/games?universeIds=${targetPlaceId}`,
+    // Step 1: Get Universe ID from Place ID
+    const placeDetailsResponse = await fetch(
+      `https://games.roblox.com/v1/games/multiget-place-details?placeIds=${targetPlaceId}`,
       {
         headers: {
           'Accept': 'application/json',
@@ -146,21 +203,75 @@ export async function getRobloxGameInfo(placeId?: string): Promise<RobloxGameInf
       }
     )
 
-    if (!response.ok) {
+    if (!placeDetailsResponse.ok) {
       return null
     }
 
-    const data = await response.json()
-    const game = data.data?.[0]
+    const placeDetailsData = await placeDetailsResponse.json()
+    const placeDetails = placeDetailsData.data?.[0]
+
+    if (!placeDetails || !placeDetails.universeId) {
+      return null
+    }
+
+    const universeId = placeDetails.universeId
+
+    // Step 2: Get game stats using Universe ID
+    const gameStatsResponse = await fetch(
+      `https://games.roblox.com/v1/games?universeIds=${universeId}`,
+      {
+        headers: {
+          'Accept': 'application/json',
+        },
+      }
+    )
+
+    if (!gameStatsResponse.ok) {
+      return null
+    }
+
+    const gameStatsData = await gameStatsResponse.json()
+    const game = gameStatsData.data?.[0]
 
     if (!game) {
       return null
     }
 
-    const upVotes = game.upVotes || 0
-    const downVotes = game.downVotes || 0
-    const totalVotes = upVotes + downVotes
-    const percentageRating = totalVotes > 0 ? Math.round((upVotes / totalVotes) * 100) : 0
+    // Step 3: Get votes using Universe ID
+    let upVotes = 0
+    let downVotes = 0
+    let percentageRating = 0
+
+    const votesResponse = await fetch(
+      `https://games.roblox.com/v1/games/votes?universeIds=${universeId}`,
+      {
+        headers: {
+          'Accept': 'application/json',
+        },
+      }
+    )
+
+    if (votesResponse.ok) {
+      const votesData = await votesResponse.json()
+      const voteEntry = votesData.data?.find((v: any) => v.universeId === universeId)
+
+      if (voteEntry) {
+        upVotes = voteEntry.upVotes || 0
+        downVotes = voteEntry.downVotes || 0
+        const totalVotes = upVotes + downVotes
+        if (totalVotes > 0) {
+          percentageRating = Math.round((upVotes / totalVotes) * 100)
+        }
+      }
+    } else {
+      // Fallback: try to get votes from game stats if available
+      upVotes = game.upVotes || 0
+      downVotes = game.downVotes || 0
+      const totalVotes = upVotes + downVotes
+      if (totalVotes > 0) {
+        percentageRating = Math.round((upVotes / totalVotes) * 100)
+      }
+    }
 
     return {
       placeId: targetPlaceId,

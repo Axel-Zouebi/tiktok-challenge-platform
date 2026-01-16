@@ -12,12 +12,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ participants: [] })
     }
 
-    // Search participants by display name or channel handles
+    // Search participants by Discord username or channel handles
     const participants = await prisma.participant.findMany({
       where: {
         OR: [
           {
-            displayName: {
+            discordUsername: {
               contains: query,
               mode: 'insensitive',
             },
@@ -55,14 +55,14 @@ export async function GET(request: NextRequest) {
       },
       take: 20, // Limit results
       orderBy: {
-        displayName: 'asc',
+        discordUsername: 'asc',
       },
     })
 
     // Format results
     const results = participants.map((participant) => ({
       id: participant.id,
-      displayName: participant.displayName,
+      discordUsername: participant.discordUsername,
       channels: participant.channels.map((c) => ({
         platform: c.platform,
         handle: c.handle,

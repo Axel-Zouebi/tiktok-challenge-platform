@@ -116,7 +116,7 @@ export async function GET(
     return NextResponse.json({
       participant: {
         id: participant.id,
-        displayName: participant.displayName,
+        discordUsername: participant.discordUsername,
         email: participant.email,
       },
       channels: participant.channels,

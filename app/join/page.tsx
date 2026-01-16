@@ -17,14 +17,12 @@ export default function JoinPage() {
   const [success, setSuccess] = useState(false)
   const [dashboardUrl, setDashboardUrl] = useState("")
   const [formData, setFormData] = useState({
-    displayName: "",
     email: "",
     discordUsername: "",
     tiktokHandle: "",
     youtubeChannel: "",
   })
   const [errors, setErrors] = useState<{
-    displayName?: string
     email?: string
     discordUsername?: string
     tiktokHandle?: string
@@ -33,11 +31,6 @@ export default function JoinPage() {
 
   const validateForm = () => {
     const newErrors: typeof errors = {}
-
-    // Validate display name (required)
-    if (!formData.displayName.trim()) {
-      newErrors.displayName = "Display name is required"
-    }
 
     // Validate Discord username (required)
     if (!formData.discordUsername.trim()) {
@@ -99,9 +92,7 @@ export default function JoinPage() {
         if (data.details && Array.isArray(data.details)) {
           const serverErrors: typeof errors = {}
           data.details.forEach((detail: { field: string; message: string }) => {
-            if (detail.field === 'displayName') {
-              serverErrors.displayName = detail.message
-            } else if (detail.field === 'email') {
+            if (detail.field === 'email') {
               serverErrors.email = detail.message
             } else if (detail.field === 'discordUsername') {
               serverErrors.discordUsername = detail.message
@@ -207,21 +198,6 @@ export default function JoinPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="displayName">Display Name *</Label>
-              <Input
-                id="displayName"
-                required
-                value={formData.displayName}
-                onChange={(e) => handleInputChange("displayName", e.target.value)}
-                placeholder="Your name or channel name"
-                className={errors.displayName ? "border-red-500 focus-visible:ring-red-500" : ""}
-              />
-              {errors.displayName && (
-                <p className="text-sm text-red-500">{errors.displayName}</p>
-              )}
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="email">Email (Optional)</Label>
               <Input

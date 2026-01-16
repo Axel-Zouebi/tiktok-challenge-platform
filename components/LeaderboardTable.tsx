@@ -15,8 +15,7 @@ import { useRouter } from "next/navigation"
 export interface LeaderboardEntry {
   rank: number
   participantId: string
-  displayName: string
-  discordUsername?: string
+  discordUsername: string
   discordAvatarUrl?: string | null
   channels: Array<{
     platform: Platform
@@ -80,7 +79,7 @@ export function LeaderboardTable({ entries, platform }: LeaderboardTableProps) {
                   {entry.discordAvatarUrl ? (
                     <img
                       src={entry.discordAvatarUrl}
-                      alt={entry.displayName}
+                      alt={entry.discordUsername}
                       className="w-8 h-8 rounded-full object-cover"
                       onError={(e) => {
                         // Fallback to default Discord avatar if image fails to load
@@ -90,10 +89,10 @@ export function LeaderboardTable({ entries, platform }: LeaderboardTableProps) {
                     />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                      {entry.displayName.charAt(0).toUpperCase()}
+                      {entry.discordUsername.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <span>{entry.displayName}</span>
+                  <span>{entry.discordUsername}</span>
                 </div>
               </TableCell>
               <TableCell>

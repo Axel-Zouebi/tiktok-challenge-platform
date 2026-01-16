@@ -13,7 +13,7 @@ export interface RobuxStats {
 
 export interface ParticipantRobux {
   participantId: string
-  displayName: string
+  discordUsername: string
   eligibleVideosCount: number
   robuxEarned: number
 }
@@ -26,7 +26,7 @@ export async function calculateParticipantRobux(
 ): Promise<ParticipantRobux> {
   const participant = await prisma.participant.findUnique({
     where: { id: participantId },
-    select: { id: true, displayName: true },
+    select: { id: true, discordUsername: true },
   })
 
   if (!participant) {
@@ -49,7 +49,7 @@ export async function calculateParticipantRobux(
 
   return {
     participantId: participant.id,
-    displayName: participant.displayName,
+    discordUsername: participant.discordUsername,
     eligibleVideosCount: eligibleVideos,
     robuxEarned,
   }

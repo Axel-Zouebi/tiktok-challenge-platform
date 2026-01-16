@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
             participant: {
               select: {
                 id: true,
-                displayName: true,
+                discordUsername: true,
               },
             },
           },

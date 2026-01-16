@@ -39,7 +39,7 @@ interface Video {
     platform: string
     handle?: string | null
     participant: {
-      displayName: string
+      discordUsername: string
     }
   }
 }
@@ -185,7 +185,7 @@ export default function AdminPage() {
       video.title,
       video.views,
       new Date(video.publishedAt).toLocaleDateString(),
-      video.channel.participant.displayName,
+      video.channel.participant.discordUsername,
       video.eligibility?.isEligible ? "Yes" : "No",
       video.eligibility?.eligibleRobux || 0,
       video.eligibility?.reasons.join("; ") || "",
@@ -342,7 +342,7 @@ export default function AdminPage() {
                         {video.platform === "tiktok" ? "TikTok" : "YouTube"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{video.channel.participant.displayName}</TableCell>
+                    <TableCell>{video.channel.participant.discordUsername}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Eye className="h-4 w-4 text-muted-foreground" />

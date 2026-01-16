@@ -7,7 +7,6 @@ import { z } from 'zod'
 export const dynamic = 'force-dynamic'
 
 const registerSchema = z.object({
-  displayName: z.string().min(1, 'Display name is required'),
   email: z.union([
     z.string().email('Invalid email address'),
     z.literal(''),
@@ -104,7 +103,7 @@ export async function POST(request: NextRequest) {
     // Create participant and channels
     const participant = await prisma.participant.create({
       data: {
-        displayName: validated.displayName.trim(),
+        displayName: discordUsername, // Use Discord username as display name
         email: validated.email && validated.email.trim() ? validated.email.trim() : null,
         discordUsername,
         discordAvatarUrl: discordValidation.avatarUrl ?? null,
@@ -140,7 +139,7 @@ export async function POST(request: NextRequest) {
       success: true,
       participant: {
         id: participant.id,
-        displayName: participant.displayName,
+        discordUsername: participant.discordUsername,
       },
       dashboardUrl,
       participantId: participant.id,

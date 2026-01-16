@@ -94,7 +94,6 @@ export async function GET(request: NextRequest) {
 
         return {
           participantId: participant.id,
-          displayName: participant.displayName,
           discordUsername: participant.discordUsername,
           discordAvatarUrl: participant.discordAvatarUrl,
           channels: channels.map((c) => ({

@@ -16,7 +16,7 @@ import { useToast } from "@/components/ui/use-toast"
 interface ParticipantData {
   participant: {
     id: string
-    displayName: string
+    discordUsername: string
     email?: string
   }
   channels: Array<{
@@ -60,7 +60,7 @@ interface ParticipantData {
 
 interface SearchResult {
   id: string
-  displayName: string
+  discordUsername: string
   channels: Array<{
     platform: string
     handle?: string | null
@@ -138,7 +138,7 @@ export default function DashboardPage() {
   }
 
   const handleSelectParticipant = (participant: SearchResult) => {
-    setSearchQuery(participant.displayName)
+    setSearchQuery(participant.discordUsername)
     setSelectedParticipantId(participant.id)
     setShowResults(false)
     fetchParticipantData(participant.id)
@@ -157,7 +157,7 @@ export default function DashboardPage() {
       setData(result)
       // Set search query to show the selected participant's name
       if (result.participant) {
-        setSearchQuery(result.participant.displayName)
+        setSearchQuery(result.participant.discordUsername)
       }
     } catch (error) {
       toast({
@@ -229,7 +229,7 @@ export default function DashboardPage() {
                       onClick={() => handleSelectParticipant(participant)}
                       className="w-full text-left px-4 py-3 hover:bg-accent transition-colors border-b last:border-b-0"
                     >
-                      <div className="font-medium">{participant.displayName}</div>
+                      <div className="font-medium">{participant.discordUsername}</div>
                       <div className="text-sm text-muted-foreground flex gap-2 mt-1">
                         {participant.channels.map((channel, idx) => (
                           <Badge key={idx} variant="outline" className="text-xs">
@@ -264,7 +264,7 @@ export default function DashboardPage() {
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h1 className="text-3xl font-bold">{data.participant.displayName}</h1>
+                  <h1 className="text-3xl font-bold">{data.participant.discordUsername}</h1>
                   <p className="text-muted-foreground">Participant Dashboard</p>
                 </div>
                 <div className="flex gap-2">

@@ -58,7 +58,6 @@ export async function POST(
       success: true,
       participant: {
         id: updatedParticipant.id,
-        displayName: updatedParticipant.displayName,
         discordUsername: updatedParticipant.discordUsername,
         discordAvatarUrl: updatedParticipant.discordAvatarUrl,
       },

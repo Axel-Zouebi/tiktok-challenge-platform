@@ -16,7 +16,7 @@ async function addTestVideo() {
       where: {
         platform: 'youtube',
         participant: {
-          displayName: { contains: 'ChillBeats', mode: 'insensitive' },
+          discordUsername: { contains: 'ChillBeats', mode: 'insensitive' },
         },
       },
       include: {
@@ -24,7 +24,7 @@ async function addTestVideo() {
       },
     })
 
-    // If not found by display name, try by URL or channelId
+    // If not found by Discord username, try by URL or channelId
     if (!channel) {
       channel = await prisma.channel.findFirst({
         where: {
@@ -43,13 +43,13 @@ async function addTestVideo() {
     if (!channel) {
       console.error('ChillBeats channel not found in database.')
       console.error('Please register first with:')
-      console.error('  - Display Name: ChillBeats')
+      console.error('  - Discord Username: ChillBeats')
       console.error('  - YouTube Channel: ChillBeats (or the channel URL)')
       process.exit(1)
     }
 
     console.log(`Found channel: ${channel.channelId} (${channel.url})`)
-    console.log(`Participant: ${channel.participant.displayName}`)
+    console.log(`Participant: ${channel.participant.discordUsername}`)
 
     // Search for the video by title
     console.log('\nSearching for video with title containing "Sip and Relax with Ghibli"...')

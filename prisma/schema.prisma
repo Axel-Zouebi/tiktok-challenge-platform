@@ -25,6 +25,7 @@ model Participant {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   channels        Channel[]
+  videos          Video[]
 }
 
 model Channel {
@@ -45,7 +46,8 @@ model Channel {
 model Video {
   id              String    @id @default(uuid())
   platform        Platform
-  channelId       String
+  channelId       String?
+  participantId   String?
   externalVideoId String
   url             String
   title           String
@@ -57,11 +59,13 @@ model Video {
   rawJson         Json?
   lastSyncedAt    DateTime  @default(now())
   createdAt       DateTime  @default(now())
-  channel         Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channel         Channel?  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  participant     Participant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
   eligibility     VideoEligibility?
 
   @@unique([platform, externalVideoId])
   @@index([channelId])
+  @@index([participantId])
   @@index([publishedAt])
   @@index([platform])
 }

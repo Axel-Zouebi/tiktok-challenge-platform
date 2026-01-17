@@ -27,6 +27,14 @@ export async function GET(
             },
           },
         },
+        videos: {
+          include: {
+            eligibility: true,
+          },
+          orderBy: {
+            publishedAt: 'desc',
+          },
+        },
       },
     })
 
@@ -37,13 +45,24 @@ export async function GET(
       )
     }
 
-    // Get all videos across all channels
-    const allVideos = participant.channels.flatMap((channel) =>
+    // Get all videos from channels
+    const channelVideos = participant.channels.flatMap((channel) =>
       channel.videos.map((video) => ({
         ...video,
         channelId: channel.id,
       }))
     )
+
+    // Get videos directly linked to participant (without channel)
+    const directVideos = participant.videos
+      .filter((video) => !video.channelId)
+      .map((video) => ({
+        ...video,
+        channelId: null,
+      }))
+
+    // Combine all videos
+    const allVideos = [...channelVideos, ...directVideos]
 
     // Calculate eligibility
     const eligibilityResults = checkEligibilityForVideos(allVideos)
@@ -91,21 +110,24 @@ export async function GET(
     })
 
     // Calculate daily posts per account
-    const dailyPosts = new Map<string, Map<string, number>>() // channelId -> date -> count
+    // Group by participantId (for videos without channels) or channelId
+    const dailyPosts = new Map<string, Map<string, number>>() // groupId -> date -> count
     for (const video of allVideos) {
       const date = video.publishedAt.toISOString().split('T')[0]
-      const channelMap = dailyPosts.get(video.channelId) || new Map()
-      const count = channelMap.get(date) || 0
-      channelMap.set(date, count + 1)
-      dailyPosts.set(video.channelId, channelMap)
+      const groupId = video.channelId || `participant-${participant.id}`
+      const dateMap = dailyPosts.get(groupId) || new Map()
+      const count = dateMap.get(date) || 0
+      dateMap.set(date, count + 1)
+      dailyPosts.set(groupId, dateMap)
     }
 
-    const dailyPostsArray = Array.from(dailyPosts.entries()).map(([channelId, dateMap]) => {
-      const channel = participant.channels.find((c) => c.id === channelId)
+    const dailyPostsArray = Array.from(dailyPosts.entries()).map(([groupId, dateMap]) => {
+      // If it's a channel ID, find the channel
+      const channel = participant.channels.find((c) => c.id === groupId)
       return {
-        channelId,
-        platform: channel?.platform,
-        handle: channel?.handle || channel?.channelId,
+        channelId: channel ? groupId : null,
+        platform: channel?.platform || (allVideos.find((v) => (v.channelId || `participant-${participant.id}`) === groupId)?.platform),
+        handle: channel?.handle || channel?.channelId || 'Direct submission',
         dailyCounts: Array.from(dateMap.entries()).map(([date, count]) => ({
           date,
           count,

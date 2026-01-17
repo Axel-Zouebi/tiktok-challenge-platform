@@ -97,11 +97,12 @@ export function checkVideoEligibility(
  * Returns updated eligibility results with daily limit applied
  */
 export function applyDailyLimit(
-  videos: (Video & { eligibility: VideoEligibility | null })[],
+  videos: (Video & { eligibility: VideoEligibility | null; participantId?: string | null })[],
   eligibilityResults: Map<string, EligibilityResult>
 ): Map<string, EligibilityResult> {
-  // Group videos by channel and date
-  const dailyCounts = new Map<string, number>() // key: channelId-date, value: count
+  // Group videos by participant/channel and date
+  // Use participantId if channelId is null, otherwise use channelId
+  const dailyCounts = new Map<string, number>() // key: participantId|channelId-date, value: count
 
   // Sort videos by published date (oldest first)
   const sortedVideos = [...videos].sort(
@@ -111,7 +112,9 @@ export function applyDailyLimit(
   const updatedResults = new Map(eligibilityResults)
 
   for (const video of sortedVideos) {
-    const dateKey = `${video.channelId}-${video.publishedAt.toISOString().split('T')[0]}`
+    // Use participantId if channelId is null, otherwise use channelId
+    const groupId = video.channelId || video.participantId || 'unknown'
+    const dateKey = `${groupId}-${video.publishedAt.toISOString().split('T')[0]}`
     const result = eligibilityResults.get(video.id)
 
     if (result?.isEligible) {

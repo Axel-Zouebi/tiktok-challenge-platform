@@ -14,17 +14,7 @@ const registerSchema = z.object({
   discordUsername: z.string().min(1, 'Discord username is required'),
   tiktokHandle: z.string().optional().or(z.literal('')),
   youtubeChannel: z.string().optional().or(z.literal('')),
-}).refine(
-  (data) => {
-    const hasTikTok = data.tiktokHandle && data.tiktokHandle.trim().length > 0
-    const hasYouTube = data.youtubeChannel && data.youtubeChannel.trim().length > 0
-    return hasTikTok || hasYouTube
-  },
-  {
-    message: 'At least one platform (TikTok or YouTube) is required',
-    path: ['tiktokHandle'],
-  }
-)
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,7 +67,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Extract channel IDs/handles
+    // Extract channel IDs/handles (optional)
     const tiktokHandle = validated.tiktokHandle && validated.tiktokHandle.trim() 
       ? extractTikTokHandle(validated.tiktokHandle.trim()) 
       : null
@@ -85,22 +75,7 @@ export async function POST(request: NextRequest) {
       ? extractYouTubeChannelId(validated.youtubeChannel.trim())
       : null
 
-    if (!tiktokHandle && !youtubeChannelId) {
-      return NextResponse.json(
-        { 
-          error: 'Could not extract valid channel information. Please check your URLs/handles.',
-          details: {
-            tiktokInput: validated.tiktokHandle,
-            youtubeInput: validated.youtubeChannel,
-            tiktokExtracted: tiktokHandle,
-            youtubeExtracted: youtubeChannelId,
-          }
-        },
-        { status: 400 }
-      )
-    }
-
-    // Create participant and channels
+    // Create participant (channels are optional)
     const participant = await prisma.participant.create({
       data: {
         displayName: discordUsername, // Use Discord username as display name

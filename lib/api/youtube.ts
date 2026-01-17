@@ -362,9 +362,49 @@ export async function searchYouTubeVideosByTitle(
 }
 
 /**
+ * Fetch a single YouTube video by video ID
+ */
+export async function fetchYouTubeVideoById(videoId: string): Promise<YouTubeVideo | null> {
+  if (!YOUTUBE_API_KEY) {
+    throw new Error('YOUTUBE_API_KEY is not set')
+  }
+
+  try {
+    // Get detailed video information
+    const response = await fetch(
+      `${YOUTUBE_API_BASE}/videos?part=snippet,contentDetails,statistics&id=${videoId}&key=${YOUTUBE_API_KEY}`
+    )
+
+    if (!response.ok) {
+      throw new Error(`YouTube API error: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    if (!data.items || data.items.length === 0) {
+      return null
+    }
+
+    const video = data.items[0]
+    return {
+      id: video.id,
+      title: video.snippet.title,
+      description: video.snippet.description || '',
+      publishedAt: video.snippet.publishedAt,
+      duration: video.contentDetails.duration,
+      viewCount: video.statistics.viewCount || '0',
+      thumbnailUrl: video.snippet.thumbnails?.high?.url || video.snippet.thumbnails?.default?.url || '',
+      url: `https://www.youtube.com/watch?v=${video.id}`,
+    }
+  } catch (error) {
+    console.error('Error fetching YouTube video:', error)
+    throw error
+  }
+}
+
+/**
  * Convert YouTube video to database format
  */
-export function youtubeVideoToDbFormat(video: YouTubeVideo, channelId: string) {
+export function youtubeVideoToDbFormat(video: YouTubeVideo, channelId?: string) {
   return {
     platform: 'youtube' as const,
     externalVideoId: video.id,

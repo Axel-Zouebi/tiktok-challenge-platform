@@ -244,7 +244,7 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
     let durationSeconds: number | null = null
 
     // Method 1: Look for JSON-LD structured data
-    const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>(.*?)<\/script>/s)
+    const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/)
     if (jsonLdMatch) {
       try {
         const jsonLd = JSON.parse(jsonLdMatch[1])
@@ -260,7 +260,7 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
     }
 
     // Method 2: Look for TikTok's universal data script
-    const universalDataMatch = html.match(/<script[^>]*id=["']__UNIVERSAL_DATA_FOR_REHYDRATION__["'][^>]*>(.*?)<\/script>/s)
+    const universalDataMatch = html.match(/<script[^>]*id=["']__UNIVERSAL_DATA_FOR_REHYDRATION__["'][^>]*>([\s\S]*?)<\/script>/)
     if (universalDataMatch) {
       try {
         const data = JSON.parse(universalDataMatch[1])
@@ -309,8 +309,8 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
 
     // Method 4: Look for inline data attributes or window.__data
     if (views === 0 || durationSeconds === null) {
-      const windowDataMatch = html.match(/window\.__data\s*=\s*({.*?});/s) ||
-                             html.match(/window\.__INITIAL_STATE__\s*=\s*({.*?});/s)
+      const windowDataMatch = html.match(/window\.__data\s*=\s*({[\s\S]*?});/) ||
+                             html.match(/window\.__INITIAL_STATE__\s*=\s*({[\s\S]*?});/)
       if (windowDataMatch) {
         try {
           const windowData = JSON.parse(windowDataMatch[1])
@@ -330,7 +330,7 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
     // Method 5: Look for any script tag containing video data (more flexible)
     if (views === 0 || durationSeconds === null) {
       // Try to find any large JSON object in script tags that might contain video data
-      const scriptMatches = html.matchAll(/<script[^>]*>(.*?)<\/script>/gs)
+      const scriptMatches = html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)
       for (const match of scriptMatches) {
         const scriptContent = match[1]
         // Look for patterns that suggest video metadata

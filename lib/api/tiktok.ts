@@ -159,3 +159,79 @@ export function parseTikTokVideoUrl(url: string): string | null {
   return null
 }
 
+/**
+ * TikTok oEmbed response interface
+ * Some fields may be optional depending on the video
+ */
+export interface TikTokOEmbedResponse {
+  version: string
+  type: string
+  title?: string
+  author_name?: string
+  author_url?: string
+  author_id?: string
+  thumbnail_url?: string
+  thumbnail_width?: number
+  thumbnail_height?: number
+  html?: string
+  width?: number
+  height?: number
+  video_id?: string
+  duration?: number
+  embed_product_id?: string
+  embed_product_type?: string
+}
+
+/**
+ * Fetch TikTok video metadata using oEmbed API
+ * This provides thumbnail, title, author, and embed HTML
+ */
+export async function fetchTikTokVideoByUrl(videoUrl: string): Promise<TikTokOEmbedResponse | null> {
+  try {
+    // Normalize the URL - ensure it's a full TikTok URL
+    let normalizedUrl = videoUrl.trim()
+    
+    // If it's a short URL (vm.tiktok.com), we might need to resolve it first
+    // For now, try the oEmbed API directly
+    const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(normalizedUrl)}`
+    
+    const response = await fetch(oembedUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    })
+
+    if (!response.ok) {
+      console.error(`TikTok oEmbed API error: ${response.status} ${response.statusText}`)
+      return null
+    }
+
+    const data = await response.json() as TikTokOEmbedResponse
+    return data
+  } catch (error) {
+    console.error('Error fetching TikTok video metadata:', error)
+    return null
+  }
+}
+
+/**
+ * Convert TikTok oEmbed response to database format
+ */
+export function tiktokOEmbedToDbFormat(
+  oembed: TikTokOEmbedResponse,
+  videoId: string,
+  videoUrl: string
+) {
+  return {
+    platform: 'tiktok' as const,
+    externalVideoId: videoId,
+    url: videoUrl,
+    title: oembed.title || `TikTok Video ${videoId}`,
+    description: oembed.author_name ? `Video from @${oembed.author_name}` : '',
+    publishedAt: new Date(), // oEmbed doesn't provide publish date
+    durationSeconds: oembed.duration || null,
+    views: 0, // oEmbed doesn't provide view count
+    thumbnailUrl: oembed.thumbnail_url || null,
+  }
+}
+

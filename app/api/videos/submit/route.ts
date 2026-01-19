@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { extractYouTubeVideoId } from '@/lib/utils'
 import { fetchYouTubeVideoById, youtubeVideoToDbFormat } from '@/lib/api/youtube'
-import { parseTikTokVideoUrl } from '@/lib/api/tiktok'
+import { parseTikTokVideoUrl, fetchTikTokVideoByUrl, tiktokOEmbedToDbFormat } from '@/lib/api/tiktok'
 import { normalizeDiscordUsername } from '@/lib/api/discord'
 import { checkEligibilityForVideos } from '@/lib/eligibility'
 import { z } from 'zod'
@@ -96,21 +96,28 @@ export async function POST(request: NextRequest) {
 
       externalVideoId = videoId
 
-      // Extract username from TikTok URL for basic info
-      const usernameMatch = videoUrl.match(/tiktok\.com\/@([^/]+)/)
-      const username = usernameMatch ? usernameMatch[1] : null
+      // Fetch video metadata from TikTok oEmbed API
+      const tiktokOEmbed = await fetchTikTokVideoByUrl(videoUrl)
+      
+      if (tiktokOEmbed) {
+        // Use oEmbed data to get thumbnail, title, author, etc.
+        videoData = tiktokOEmbedToDbFormat(tiktokOEmbed, videoId, videoUrl)
+      } else {
+        // Fallback to basic data if oEmbed fails
+        const usernameMatch = videoUrl.match(/tiktok\.com\/@([^/]+)/)
+        const username = usernameMatch ? usernameMatch[1] : null
 
-      // Create minimal video data for TikTok (since API isn't fully available)
-      videoData = {
-        platform: 'tiktok' as const,
-        externalVideoId: videoId,
-        url: videoUrl,
-        title: `TikTok Video ${videoId}`,
-        description: username ? `Video from @${username}` : '',
-        publishedAt: new Date(), // Use current date as fallback
-        durationSeconds: null,
-        views: 0,
-        thumbnailUrl: null,
+        videoData = {
+          platform: 'tiktok' as const,
+          externalVideoId: videoId,
+          url: videoUrl,
+          title: `TikTok Video ${videoId}`,
+          description: username ? `Video from @${username}` : '',
+          publishedAt: new Date(),
+          durationSeconds: null,
+          views: 0,
+          thumbnailUrl: null,
+        }
       }
     }
 

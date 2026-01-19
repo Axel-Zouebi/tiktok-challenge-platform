@@ -148,6 +148,7 @@ export async function GET(
         id: participant.id,
         discordUsername: participant.discordUsername,
         email: participant.email,
+        discordAvatarUrl: participant.discordAvatarUrl,
       },
       channels: participant.channels,
       videos: videosWithEligibility,

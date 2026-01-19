@@ -18,6 +18,7 @@ interface ParticipantData {
     id: string
     discordUsername: string
     email?: string
+    discordAvatarUrl?: string | null
   }
   channels: Array<{
     id: string
@@ -284,7 +285,25 @@ export default function DashboardPage() {
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h1 className="text-3xl font-bold">{data.participant.discordUsername}</h1>
+                  <div className="flex items-center gap-3 mb-2">
+                    {data.participant.discordAvatarUrl ? (
+                      <img
+                        src={data.participant.discordAvatarUrl}
+                        alt={data.participant.discordUsername}
+                        className="w-10 h-10 rounded-full object-cover"
+                        onError={(e) => {
+                          // Fallback to default Discord avatar if image fails to load
+                          const target = e.target as HTMLImageElement
+                          target.src = `https://cdn.discordapp.com/embed/avatars/${(data.participant.id.charCodeAt(0) % 5)}.png`
+                        }}
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
+                        {data.participant.discordUsername.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <h1 className="text-3xl font-bold">{data.participant.discordUsername}</h1>
+                  </div>
                   <p className="text-muted-foreground">Participant Dashboard</p>
                 </div>
                 <div className="flex gap-2">

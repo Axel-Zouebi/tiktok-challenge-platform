@@ -99,13 +99,21 @@ export async function GET(
     // Group videos by eligibility
     const videosWithEligibility = allVideos.map((video) => {
       const eligibility = eligibilityResults.get(video.id)
+      // Use database eligibility if it exists (for admin overrides), otherwise use calculated
+      const dbEligibility = video.eligibility
       return {
         ...video,
-        eligibility: eligibility || {
+        eligibility: dbEligibility ? {
+          isEligible: dbEligibility.isEligible,
+          reasons: dbEligibility.reasons,
+          eligibleRobux: dbEligibility.eligibleRobux,
+          overriddenByAdmin: dbEligibility.overriddenByAdmin,
+        } : (eligibility || {
           isEligible: false,
           reasons: ['Not yet evaluated'],
           eligibleRobux: 0,
-        },
+          overriddenByAdmin: false,
+        }),
       }
     })
 

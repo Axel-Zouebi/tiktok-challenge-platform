@@ -5,7 +5,7 @@ import { Platform } from "@prisma/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EligibilityBadge } from "./EligibilityBadge"
 import { Badge } from "@/components/ui/badge"
-import { ExternalLink, Clock, Eye, Play } from "lucide-react"
+import { ExternalLink, Clock, Eye, Play, CheckCircle2, XCircle } from "lucide-react"
 import Link from "next/link"
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { extractYouTubeVideoId, extractTikTokVideoId } from "@/lib/utils"
+import { getEligibilityChecklist } from "@/lib/eligibility"
 
 interface VideoCardProps {
   video: {
@@ -29,6 +30,7 @@ interface VideoCardProps {
     eligibility: {
       isEligible: boolean
       reasons: string[]
+      overriddenByAdmin?: boolean | null
     } | null
   }
 }
@@ -174,17 +176,55 @@ export function VideoCard({ video }: VideoCardProps) {
                   {video.description}
                 </p>
               )}
-              {video.eligibility && video.eligibility.reasons.length > 0 && (
+              {video.eligibility && (
                 <div className="pt-2 border-t">
-                  <p className="text-xs font-medium mb-1">Eligibility reasons:</p>
-                  <ul className="text-xs text-muted-foreground space-y-1">
-                    {video.eligibility.reasons.map((reason, idx) => (
-                      <li key={idx} className="flex items-start gap-1">
-                        <span className="mt-0.5">•</span>
-                        <span>{reason}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <p className="text-xs font-medium mb-2">Eligibility Checklist:</p>
+                  {(() => {
+                    const checklist = getEligibilityChecklist(
+                      {
+                        platform: video.platform,
+                        title: video.title,
+                        description: video.description,
+                        durationSeconds: video.durationSeconds,
+                        views: video.views,
+                      },
+                      video.eligibility.overriddenByAdmin
+                    )
+                    return (
+                      <div className="space-y-1.5">
+                        {checklist.map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-2 text-xs">
+                            {item.passed ? (
+                              <CheckCircle2 className="h-3.5 w-3.5 text-green-500 mt-0.5 flex-shrink-0" />
+                            ) : (
+                              <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <span className={`font-medium ${item.passed ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                                {item.label}:
+                              </span>
+                              <span className="text-muted-foreground ml-1">
+                                {item.value}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
+                  {video.eligibility.reasons.length > 0 && (
+                    <div className="mt-2 pt-2 border-t">
+                      <p className="text-xs font-medium mb-1">Status:</p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        {video.eligibility.reasons.map((reason, idx) => (
+                          <li key={idx} className="flex items-start gap-1">
+                            <span className="mt-0.5">•</span>
+                            <span>{reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

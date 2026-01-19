@@ -40,6 +40,7 @@ interface ParticipantData {
       isEligible: boolean
       reasons: string[]
       eligibleRobux: number
+      overriddenByAdmin?: boolean | null
     }
   }>
   totals: {

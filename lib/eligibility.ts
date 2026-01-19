@@ -1,10 +1,10 @@
 import { Video, Platform, VideoEligibility } from '@prisma/client'
 
-const HASHTAG = '#trythemoon'
-const MIN_DURATION_SECONDS = 15
-const TIKTOK_MIN_VIEWS = 5000
-const YOUTUBE_MIN_VIEWS = 10000
-const MAX_POSTS_PER_DAY = 3
+export const HASHTAG = '#trythemoon'
+export const MIN_DURATION_SECONDS = 15
+export const TIKTOK_MIN_VIEWS = 5000
+export const YOUTUBE_MIN_VIEWS = 10000
+export const MAX_POSTS_PER_DAY = 3
 
 export interface EligibilityResult {
   isEligible: boolean
@@ -12,30 +12,104 @@ export interface EligibilityResult {
   eligibleRobux: number
 }
 
+export interface EligibilityChecklistItem {
+  label: string
+  passed: boolean
+  value: string
+}
+
 /**
  * Check if text contains the required hashtag (case-insensitive)
  */
-function hasHashtag(text: string): boolean {
+export function hasHashtag(text: string): boolean {
   return text.toLowerCase().includes(HASHTAG.toLowerCase())
 }
 
 /**
  * Check if video meets duration requirement
  */
-function meetsDurationRequirement(durationSeconds: number | null): boolean {
+export function meetsDurationRequirement(durationSeconds: number | null): boolean {
   return durationSeconds !== null && durationSeconds >= MIN_DURATION_SECONDS
 }
 
 /**
  * Check if video meets views threshold for platform
  */
-function meetsViewsRequirement(platform: Platform, views: number): boolean {
+export function meetsViewsRequirement(platform: Platform, views: number): boolean {
   if (platform === 'tiktok') {
     return views >= TIKTOK_MIN_VIEWS
   } else if (platform === 'youtube') {
     return views >= YOUTUBE_MIN_VIEWS
   }
   return false
+}
+
+/**
+ * Get eligibility checklist for a video
+ * Returns an array of checklist items showing which requirements are met
+ */
+export function getEligibilityChecklist(
+  video: {
+    platform: Platform | string
+    title: string
+    description?: string | null
+    durationSeconds?: number | null | undefined
+    views: number
+  },
+  overriddenByAdmin?: boolean | null
+): EligibilityChecklistItem[] {
+  const checklist: EligibilityChecklistItem[] = []
+
+  // If admin override, show that first
+  if (overriddenByAdmin === true) {
+    checklist.push({
+      label: 'Admin Override',
+      passed: true,
+      value: 'Eligible (admin override)',
+    })
+    return checklist
+  }
+
+  if (overriddenByAdmin === false) {
+    checklist.push({
+      label: 'Admin Override',
+      passed: false,
+      value: 'Not eligible (admin override)',
+    })
+    return checklist
+  }
+
+  // Check duration
+  const durationPassed = meetsDurationRequirement(video.durationSeconds ?? null)
+  const durationValue = video.durationSeconds != null
+    ? `${Math.floor(video.durationSeconds / 60)}:${String(video.durationSeconds % 60).padStart(2, '0')} (min: ${MIN_DURATION_SECONDS}s)`
+    : 'N/A'
+  checklist.push({
+    label: 'Duration',
+    passed: durationPassed,
+    value: durationValue,
+  })
+
+  // Check hashtag
+  const text = `${video.title} ${video.description || ''}`.toLowerCase()
+  const hashtagPassed = hasHashtag(text)
+  checklist.push({
+    label: 'Hashtag',
+    passed: hashtagPassed,
+    value: hashtagPassed ? `Includes #trythemoon` : `Missing #trythemoon`,
+  })
+
+  // Check views
+  const minViews = video.platform === 'tiktok' ? TIKTOK_MIN_VIEWS : YOUTUBE_MIN_VIEWS
+  const viewsPassed = meetsViewsRequirement(video.platform as Platform, video.views)
+  const viewsValue = `${video.views.toLocaleString()} views (min: ${minViews.toLocaleString()})`
+  checklist.push({
+    label: 'Views',
+    passed: viewsPassed,
+    value: viewsValue,
+  })
+
+  return checklist
 }
 
 /**

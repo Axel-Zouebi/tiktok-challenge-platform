@@ -264,28 +264,49 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
     if (universalDataMatch) {
       try {
         const data = JSON.parse(universalDataMatch[1])
-        // Navigate through TikTok's data structure
+        // Navigate through TikTok's data structure - try multiple possible paths
         const videoData = data?.defaultScope?.webapp?.video?.detail?.video || 
                          data?.__DEFAULT_SCOPE__?.webapp?.video?.detail?.video ||
-                         data?.webapp?.video?.detail?.video
+                         data?.webapp?.video?.detail?.video ||
+                         data?.ItemModule?.[Object.keys(data?.ItemModule || {})[0]] ||
+                         data?.VideoPage?.[Object.keys(data?.VideoPage || {})[0]]
         
         if (videoData) {
-          // Extract views
-          if (videoData.stats?.playCount !== undefined) {
-            views = parseInt(String(videoData.stats.playCount), 10) || 0
-          } else if (videoData.playCount !== undefined) {
-            views = parseInt(String(videoData.playCount), 10) || 0
+          // Extract views - try multiple paths
+          if (views === 0) {
+            if (videoData.stats?.playCount !== undefined) {
+              views = parseInt(String(videoData.stats.playCount), 10) || 0
+            } else if (videoData.playCount !== undefined) {
+              views = parseInt(String(videoData.playCount), 10) || 0
+            } else if (videoData.statistics?.playCount !== undefined) {
+              views = parseInt(String(videoData.statistics.playCount), 10) || 0
+            } else if (videoData.viewCount !== undefined) {
+              views = parseInt(String(videoData.viewCount), 10) || 0
+            }
           }
           
-          // Extract duration
-          if (videoData.duration !== undefined) {
-            durationSeconds = parseInt(String(videoData.duration), 10) || null
-          } else if (videoData.videoMeta?.duration !== undefined) {
-            durationSeconds = parseInt(String(videoData.videoMeta.duration), 10) || null
+          // Extract duration - try multiple paths and formats
+          if (durationSeconds === null) {
+            // Try direct duration field
+            if (videoData.duration !== undefined && videoData.duration !== null) {
+              const dur = parseInt(String(videoData.duration), 10)
+              // If duration is > 1000, it's likely in milliseconds
+              durationSeconds = dur > 1000 ? Math.floor(dur / 1000) : dur
+            } else if (videoData.videoMeta?.duration !== undefined) {
+              const dur = parseInt(String(videoData.videoMeta.duration), 10)
+              durationSeconds = dur > 1000 ? Math.floor(dur / 1000) : dur
+            } else if (videoData.video?.duration !== undefined) {
+              const dur = parseInt(String(videoData.video.duration), 10)
+              durationSeconds = dur > 1000 ? Math.floor(dur / 1000) : dur
+            } else if (videoData.meta?.duration !== undefined) {
+              const dur = parseInt(String(videoData.meta.duration), 10)
+              durationSeconds = dur > 1000 ? Math.floor(dur / 1000) : dur
+            }
           }
         }
       } catch (e) {
         // JSON parse failed, continue to meta tag method
+        console.warn('Failed to parse TikTok universal data:', e)
       }
     }
 
@@ -299,11 +320,34 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
     }
 
     if (durationSeconds === null) {
+      // Try meta tags
       const durationMatch = html.match(/<meta[^>]*property=["']video:duration["'][^>]*content=["'](\d+)["']/i) ||
                            html.match(/<meta[^>]*name=["']video:duration["'][^>]*content=["'](\d+)["']/i) ||
-                           html.match(/duration["']?\s*:\s*(\d+)/i)
+                           html.match(/<meta[^>]*property=["']og:video:duration["'][^>]*content=["'](\d+)["']/i)
       if (durationMatch) {
-        durationSeconds = parseInt(durationMatch[1], 10) || null
+        const dur = parseInt(durationMatch[1], 10)
+        // If duration is > 1000, it's likely in milliseconds
+        durationSeconds = dur > 1000 ? Math.floor(dur / 1000) : dur
+      }
+      
+      // Try video element duration attribute
+      if (durationSeconds === null) {
+        const videoDurationMatch = html.match(/<video[^>]*duration=["'](\d+)["']/i) ||
+                                   html.match(/<video[^>]*data-duration=["'](\d+)["']/i)
+        if (videoDurationMatch) {
+          const dur = parseInt(videoDurationMatch[1], 10)
+          durationSeconds = dur > 1000 ? Math.floor(dur / 1000) : dur
+        }
+      }
+      
+      // Try to find duration in data attributes
+      if (durationSeconds === null) {
+        const dataDurationMatch = html.match(/data-duration=["'](\d+)["']/i) ||
+                                 html.match(/["']duration["']\s*:\s*(\d+)/i)
+        if (dataDurationMatch) {
+          const dur = parseInt(dataDurationMatch[1], 10)
+          durationSeconds = dur > 1000 ? Math.floor(dur / 1000) : dur
+        }
       }
     }
 
@@ -329,58 +373,154 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
 
     // Method 5: Look for any script tag containing video data (more flexible)
     if (views === 0 || durationSeconds === null) {
-      // Try to find any large JSON object in script tags that might contain video data
+      // Recursively search for values in nested objects
+      const findValue = (obj: any, keys: string[]): any => {
+        if (!obj || typeof obj !== 'object') return null
+        for (const key of keys) {
+          if (obj[key] !== undefined && obj[key] !== null) return obj[key]
+        }
+        for (const value of Object.values(obj)) {
+          if (typeof value === 'object' && value !== null) {
+            const found = findValue(value, keys)
+            if (found !== null) return found
+          }
+        }
+        return null
+      }
+
+      // Helper to parse duration from various formats
+      const parseDuration = (value: any): number | null => {
+        if (value === null || value === undefined) return null
+        
+        // If it's already a number
+        if (typeof value === 'number') {
+          // If it's in milliseconds (common for video durations), convert to seconds
+          if (value > 1000) {
+            return Math.floor(value / 1000)
+          }
+          return value
+        }
+        
+        const str = String(value)
+        
+        // Try to parse as number
+        const num = parseInt(str, 10)
+        if (!isNaN(num)) {
+          // If it's in milliseconds, convert to seconds
+          if (num > 1000) {
+            return Math.floor(num / 1000)
+          }
+          return num
+        }
+        
+        // Try to parse time format like "0:15" or "1:23" (minutes:seconds)
+        const timeMatch = str.match(/(\d+):(\d+)/)
+        if (timeMatch) {
+          const minutes = parseInt(timeMatch[1], 10)
+          const seconds = parseInt(timeMatch[2], 10)
+          return minutes * 60 + seconds
+        }
+        
+        // Try to parse format like "15s" or "1m30s"
+        const timeStrMatch = str.match(/(?:(\d+)m)?(?:(\d+)s)?/)
+        if (timeStrMatch) {
+          const minutes = parseInt(timeStrMatch[1] || '0', 10)
+          const seconds = parseInt(timeStrMatch[2] || '0', 10)
+          return minutes * 60 + seconds
+        }
+        
+        return null
+      }
+
+      // Try to find any large JSON object in script tags
       const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/g
       let match: RegExpExecArray | null
       while ((match = scriptRegex.exec(html)) !== null) {
         const scriptContent = match[1]
-        // Look for patterns that suggest video metadata
-        if (scriptContent.includes('playCount') || scriptContent.includes('duration') || scriptContent.includes('viewCount')) {
-          try {
-            // Try to extract JSON objects
-            const jsonMatches = scriptContent.match(/\{[^{}]*(?:playCount|viewCount|duration)[^{}]*\}/g)
-            if (jsonMatches) {
-              for (const jsonStr of jsonMatches) {
-                try {
-                  const obj = JSON.parse(jsonStr)
-                  // Recursively search for views and duration
-                  const findValue = (obj: any, keys: string[]): any => {
-                    if (!obj || typeof obj !== 'object') return null
-                    for (const key of keys) {
-                      if (obj[key] !== undefined) return obj[key]
-                    }
-                    for (const value of Object.values(obj)) {
-                      if (typeof value === 'object') {
-                        const found = findValue(value, keys)
-                        if (found !== null) return found
-                      }
-                    }
-                    return null
+        
+        // Skip if script is too small or doesn't contain relevant keywords
+        if (scriptContent.length < 50 || 
+            (!scriptContent.includes('playCount') && 
+             !scriptContent.includes('duration') && 
+             !scriptContent.includes('viewCount') &&
+             !scriptContent.includes('video'))) {
+          continue
+        }
+
+        try {
+          // Try to parse the entire script content as JSON
+          let data: any = null
+          
+          // First, try to find JSON objects in the script
+          // Look for patterns like: var data = {...} or window.data = {...} or just {...}
+          const jsonPatterns = [
+            /(?:var|let|const)\s+\w+\s*=\s*({[\s\S]+?});/,
+            /window\.\w+\s*=\s*({[\s\S]+?});/,
+            /({[\s\S]{100,}?})/  // Any large JSON object (at least 100 chars)
+          ]
+          
+          for (const pattern of jsonPatterns) {
+            const jsonMatch = scriptContent.match(pattern)
+            if (jsonMatch) {
+              try {
+                data = JSON.parse(jsonMatch[1])
+                break
+              } catch (e) {
+                // Try to extract just the JSON part
+                const braceMatch = jsonMatch[1].match(/\{[\s\S]*\}/)
+                if (braceMatch) {
+                  try {
+                    data = JSON.parse(braceMatch[0])
+                    break
+                  } catch (e2) {
+                    // Continue to next pattern
                   }
-                  
-                  if (views === 0) {
-                    const foundViews = findValue(obj, ['playCount', 'viewCount', 'views', 'play_count', 'view_count'])
-                    if (foundViews !== null) {
-                      views = parseInt(String(foundViews), 10) || 0
-                    }
-                  }
-                  
-                  if (durationSeconds === null) {
-                    const foundDuration = findValue(obj, ['duration', 'videoDuration', 'video_duration'])
-                    if (foundDuration !== null) {
-                      durationSeconds = parseInt(String(foundDuration), 10) || null
-                    }
-                  }
-                  
-                  if (views > 0 && durationSeconds !== null) break
-                } catch (e) {
-                  // Continue to next match
                 }
               }
             }
-          } catch (e) {
-            // Continue to next script tag
           }
+          
+          // If we found a JSON object, search it recursively
+          if (data) {
+            if (views === 0) {
+              const foundViews = findValue(data, ['playCount', 'viewCount', 'views', 'play_count', 'view_count', 'statistics', 'stats'])
+              if (foundViews !== null) {
+                views = parseInt(String(foundViews), 10) || 0
+              }
+            }
+            
+            if (durationSeconds === null) {
+              const foundDuration = findValue(data, ['duration', 'videoDuration', 'video_duration', 'videoMeta', 'meta', 'time'])
+              if (foundDuration !== null) {
+                durationSeconds = parseDuration(foundDuration)
+              }
+            }
+            
+            if (views > 0 && durationSeconds !== null) break
+          }
+          
+          // Also try regex-based extraction as fallback
+          if (durationSeconds === null) {
+            // Look for duration patterns in the raw script content
+            const durationPatterns = [
+              /["']duration["']\s*:\s*(\d+)/i,
+              /duration["']?\s*[:=]\s*["']?(\d+)/i,
+              /videoDuration["']?\s*[:=]\s*["']?(\d+)/i,
+            ]
+            
+            for (const pattern of durationPatterns) {
+              const durationMatch = scriptContent.match(pattern)
+              if (durationMatch) {
+                const parsed = parseDuration(durationMatch[1])
+                if (parsed !== null) {
+                  durationSeconds = parsed
+                  break
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // Continue to next script tag
         }
       }
     }

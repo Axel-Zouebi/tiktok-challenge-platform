@@ -272,16 +272,48 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
                          data?.VideoPage?.[Object.keys(data?.VideoPage || {})[0]]
         
         if (videoData) {
-          // Extract views - try multiple paths
+          // Extract views - try multiple paths and handle formatted numbers
           if (views === 0) {
+            let foundViews: any = null
+            
+            // Try various paths for views
             if (videoData.stats?.playCount !== undefined) {
-              views = parseInt(String(videoData.stats.playCount), 10) || 0
+              foundViews = videoData.stats.playCount
             } else if (videoData.playCount !== undefined) {
-              views = parseInt(String(videoData.playCount), 10) || 0
+              foundViews = videoData.playCount
             } else if (videoData.statistics?.playCount !== undefined) {
-              views = parseInt(String(videoData.statistics.playCount), 10) || 0
+              foundViews = videoData.statistics.playCount
             } else if (videoData.viewCount !== undefined) {
-              views = parseInt(String(videoData.viewCount), 10) || 0
+              foundViews = videoData.viewCount
+            } else if (videoData.stats?.viewCount !== undefined) {
+              foundViews = videoData.stats.viewCount
+            } else if (videoData.stats?.views !== undefined) {
+              foundViews = videoData.stats.views
+            } else if (videoData.views !== undefined) {
+              foundViews = videoData.views
+            } else if (videoData.interactionCount !== undefined) {
+              foundViews = videoData.interactionCount
+            } else if (videoData.userInteractionCount !== undefined) {
+              foundViews = videoData.userInteractionCount
+            }
+            
+            if (foundViews !== null && foundViews !== undefined) {
+              // Handle formatted numbers (remove commas, handle K/M suffixes)
+              let viewStr = String(foundViews).replace(/,/g, '').trim()
+              const viewMatch = viewStr.match(/(\d+\.?\d*)\s*([KMkm]?)/)
+              if (viewMatch) {
+                const num = parseFloat(viewMatch[1])
+                const suffix = viewMatch[2]?.toUpperCase() || ''
+                if (suffix === 'K') {
+                  views = Math.floor(num * 1000)
+                } else if (suffix === 'M') {
+                  views = Math.floor(num * 1000000)
+                } else {
+                  views = parseInt(viewStr, 10) || 0
+                }
+              } else {
+                views = parseInt(viewStr, 10) || 0
+              }
             }
           }
           
@@ -310,12 +342,45 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
       }
     }
 
-    // Method 3: Look for meta tags
+    // Method 3: Look for meta tags and other HTML patterns
     if (views === 0) {
+      // Try meta tags
       const viewCountMatch = html.match(/<meta[^>]*property=["']og:video:view_count["'][^>]*content=["'](\d+)["']/i) ||
-                                html.match(/<meta[^>]*name=["']video:view_count["'][^>]*content=["'](\d+)["']/i)
+                                html.match(/<meta[^>]*name=["']video:view_count["'][^>]*content=["'](\d+)["']/i) ||
+                                html.match(/<meta[^>]*property=["']og:video:view_count["'][^>]*content=["']([\d,]+)["']/i)
       if (viewCountMatch) {
-        views = parseInt(viewCountMatch[1], 10) || 0
+        // Remove commas from numbers like "1,234"
+        const cleanNumber = viewCountMatch[1].replace(/,/g, '')
+        views = parseInt(cleanNumber, 10) || 0
+      }
+      
+      // Try to find views in data attributes or inline data
+      if (views === 0) {
+        const dataViewsMatch = html.match(/data-views=["'](\d+)["']/i) ||
+                              html.match(/["']views["']\s*:\s*(\d+)/i) ||
+                              html.match(/["']playCount["']\s*:\s*(\d+)/i) ||
+                              html.match(/["']viewCount["']\s*:\s*(\d+)/i)
+        if (dataViewsMatch) {
+          views = parseInt(dataViewsMatch[1], 10) || 0
+        }
+      }
+      
+      // Try to find formatted view counts like "1.2K views" or "1.2M views"
+      if (views === 0) {
+        const formattedViewsMatch = html.match(/(\d+\.?\d*)\s*([KMkm]?)\s*views?/i) ||
+                                     html.match(/(\d+\.?\d*)\s*([KMkm]?)\s*plays?/i) ||
+                                     html.match(/views?[:\s]+(\d+\.?\d*)\s*([KMkm]?)/i)
+        if (formattedViewsMatch) {
+          const num = parseFloat(formattedViewsMatch[1])
+          const suffix = formattedViewsMatch[2]?.toUpperCase() || ''
+          if (suffix === 'K') {
+            views = Math.floor(num * 1000)
+          } else if (suffix === 'M') {
+            views = Math.floor(num * 1000000)
+          } else {
+            views = Math.floor(num)
+          }
+        }
       }
     }
 
@@ -354,16 +419,53 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
     // Method 4: Look for inline data attributes or window.__data
     if (views === 0 || durationSeconds === null) {
       const windowDataMatch = html.match(/window\.__data\s*=\s*({[\s\S]*?});/) ||
-                             html.match(/window\.__INITIAL_STATE__\s*=\s*({[\s\S]*?});/)
+                             html.match(/window\.__INITIAL_STATE__\s*=\s*({[\s\S]*?});/) ||
+                             html.match(/window\[["']__data["']\]\s*=\s*({[\s\S]*?});/)
       if (windowDataMatch) {
         try {
           const windowData = JSON.parse(windowDataMatch[1])
-          // Try to find views and duration in various possible locations
-          if (windowData.video?.stats?.playCount !== undefined && views === 0) {
-            views = parseInt(String(windowData.video.stats.playCount), 10) || 0
+          // Try to find views in various possible locations
+          if (views === 0) {
+            let foundViews: any = null
+            if (windowData.video?.stats?.playCount !== undefined) {
+              foundViews = windowData.video.stats.playCount
+            } else if (windowData.video?.playCount !== undefined) {
+              foundViews = windowData.video.playCount
+            } else if (windowData.video?.viewCount !== undefined) {
+              foundViews = windowData.video.viewCount
+            } else if (windowData.video?.views !== undefined) {
+              foundViews = windowData.video.views
+            } else if (windowData.stats?.playCount !== undefined) {
+              foundViews = windowData.stats.playCount
+            } else if (windowData.playCount !== undefined) {
+              foundViews = windowData.playCount
+            }
+            
+            if (foundViews !== null && foundViews !== undefined) {
+              let viewStr = String(foundViews).replace(/,/g, '').trim()
+              const viewMatch = viewStr.match(/(\d+\.?\d*)\s*([KMkm]?)/)
+              if (viewMatch) {
+                const num = parseFloat(viewMatch[1])
+                const suffix = viewMatch[2]?.toUpperCase() || ''
+                if (suffix === 'K') {
+                  views = Math.floor(num * 1000)
+                } else if (suffix === 'M') {
+                  views = Math.floor(num * 1000000)
+                } else {
+                  views = parseInt(viewStr, 10) || 0
+                }
+              } else {
+                views = parseInt(viewStr, 10) || 0
+              }
+            }
           }
-          if (windowData.video?.duration !== undefined && durationSeconds === null) {
-            durationSeconds = parseInt(String(windowData.video.duration), 10) || null
+          
+          // Try to find duration
+          if (durationSeconds === null) {
+            if (windowData.video?.duration !== undefined) {
+              const dur = parseInt(String(windowData.video.duration), 10)
+              durationSeconds = dur > 1000 ? Math.floor(dur / 1000) : dur
+            }
           }
         } catch (e) {
           // Ignore parse errors
@@ -483,9 +585,28 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
           // If we found a JSON object, search it recursively
           if (data) {
             if (views === 0) {
-              const foundViews = findValue(data, ['playCount', 'viewCount', 'views', 'play_count', 'view_count', 'statistics', 'stats'])
+              const foundViews = findValue(data, [
+                'playCount', 'viewCount', 'views', 'play_count', 'view_count', 
+                'statistics', 'stats', 'interactionCount', 'userInteractionCount',
+                'watchCount', 'watch_count', 'view', 'play'
+              ])
               if (foundViews !== null) {
-                views = parseInt(String(foundViews), 10) || 0
+                // Handle formatted numbers (remove commas, handle K/M suffixes)
+                let viewStr = String(foundViews).replace(/,/g, '')
+                const viewMatch = viewStr.match(/(\d+\.?\d*)\s*([KMkm]?)/)
+                if (viewMatch) {
+                  const num = parseFloat(viewMatch[1])
+                  const suffix = viewMatch[2]?.toUpperCase() || ''
+                  if (suffix === 'K') {
+                    views = Math.floor(num * 1000)
+                  } else if (suffix === 'M') {
+                    views = Math.floor(num * 1000000)
+                  } else {
+                    views = parseInt(viewStr, 10) || 0
+                  }
+                } else {
+                  views = parseInt(viewStr, 10) || 0
+                }
               }
             }
             
@@ -500,6 +621,26 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
           }
           
           // Also try regex-based extraction as fallback
+          if (views === 0) {
+            // Look for views patterns in the raw script content
+            const viewsPatterns = [
+              /["']playCount["']\s*:\s*(\d+)/i,
+              /["']viewCount["']\s*:\s*(\d+)/i,
+              /["']views["']\s*:\s*(\d+)/i,
+              /playCount["']?\s*[:=]\s*["']?(\d+)/i,
+              /viewCount["']?\s*[:=]\s*["']?(\d+)/i,
+              /views["']?\s*[:=]\s*["']?(\d+)/i,
+            ]
+            
+            for (const pattern of viewsPatterns) {
+              const viewsMatch = scriptContent.match(pattern)
+              if (viewsMatch) {
+                views = parseInt(viewsMatch[1], 10) || 0
+                if (views > 0) break
+              }
+            }
+          }
+          
           if (durationSeconds === null) {
             // Look for duration patterns in the raw script content
             const durationPatterns = [

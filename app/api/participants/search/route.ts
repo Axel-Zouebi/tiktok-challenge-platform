@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
     const results = participants.map((participant) => ({
       id: participant.id,
       discordUsername: participant.discordUsername,
+      discordAvatarUrl: participant.discordAvatarUrl,
       channels: participant.channels.map((c) => ({
         platform: c.platform,
         handle: c.handle,

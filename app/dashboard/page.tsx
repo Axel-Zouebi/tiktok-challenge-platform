@@ -62,6 +62,7 @@ interface ParticipantData {
 interface SearchResult {
   id: string
   discordUsername: string
+  discordAvatarUrl?: string | null
   channels: Array<{
     platform: string
     handle?: string | null
@@ -230,8 +231,26 @@ export default function DashboardPage() {
                       onClick={() => handleSelectParticipant(participant)}
                       className="w-full text-left px-4 py-3 hover:bg-accent transition-colors border-b last:border-b-0"
                     >
-                      <div className="font-medium">{participant.discordUsername}</div>
-                      <div className="text-sm text-muted-foreground flex gap-2 mt-1">
+                      <div className="flex items-center gap-3">
+                        {participant.discordAvatarUrl ? (
+                          <img
+                            src={participant.discordAvatarUrl}
+                            alt={participant.discordUsername}
+                            className="w-8 h-8 rounded-full object-cover"
+                            onError={(e) => {
+                              // Fallback to default Discord avatar if image fails to load
+                              const target = e.target as HTMLImageElement
+                              target.src = `https://cdn.discordapp.com/embed/avatars/${(participant.id.charCodeAt(0) % 5)}.png`
+                            }}
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                            {participant.discordUsername.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="font-medium">{participant.discordUsername}</div>
+                      </div>
+                      <div className="text-sm text-muted-foreground flex gap-2 mt-1 ml-11">
                         {participant.channels.map((channel, idx) => (
                           <Badge key={idx} variant="outline" className="text-xs">
                             {channel.platform === "tiktok" ? "TikTok" : "YouTube"}: {channel.handle || channel.channelId || "N/A"}

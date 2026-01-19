@@ -18,8 +18,16 @@ import { Badge } from "@/components/ui/badge"
 import { EligibilityBadge } from "@/components/EligibilityBadge"
 import { RobuxCard } from "@/components/RobuxCard"
 import { Separator } from "@/components/ui/separator"
-import { Eye, RefreshCw, Download, LogOut } from "lucide-react"
+import { Eye, RefreshCw, Download, LogOut, Trash2 } from "lucide-react"
 import Link from "next/link"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface Video {
   id: string
@@ -56,6 +64,8 @@ export default function AdminPage() {
     budgetExceeded: false,
   })
   const [filter, setFilter] = useState<"all" | "eligible" | "not-eligible">("all")
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [videoToDelete, setVideoToDelete] = useState<Video | null>(null)
 
   useEffect(() => {
     // Check if already authenticated
@@ -161,6 +171,40 @@ export default function AdminPage() {
       toast({
         title: "Error",
         description: "Failed to update eligibility",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeleteClick = (video: Video) => {
+    setVideoToDelete(video)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!videoToDelete) return
+
+    try {
+      const response = await fetch(`/api/admin/videos/${videoToDelete.id}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Video deleted successfully",
+        })
+        setDeleteDialogOpen(false)
+        setVideoToDelete(null)
+        loadData()
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || "Delete failed")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete video",
         variant: "destructive",
       })
     }
@@ -385,6 +429,13 @@ export default function AdminPage() {
                             </Button>
                           </>
                         )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteClick(video)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -399,6 +450,43 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Video</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this video? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {videoToDelete && (
+            <div className="py-4">
+              <p className="font-medium">{videoToDelete.title}</p>
+              <p className="text-sm text-muted-foreground">
+                Platform: {videoToDelete.platform === "tiktok" ? "TikTok" : "YouTube"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Participant: {videoToDelete.channel.participant.discordUsername}
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false)
+                setVideoToDelete(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

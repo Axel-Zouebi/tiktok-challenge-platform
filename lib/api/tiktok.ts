@@ -215,12 +215,201 @@ export async function fetchTikTokVideoByUrl(videoUrl: string): Promise<TikTokOEm
 }
 
 /**
+ * Scrape TikTok video page for additional metadata (views, duration)
+ * TikTok oEmbed doesn't provide these, so we need to scrape the page
+ */
+export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
+  views: number
+  durationSeconds: number | null
+} | null> {
+  try {
+    const response = await fetch(videoUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+    })
+
+    if (!response.ok) {
+      console.error(`Failed to fetch TikTok page: ${response.status}`)
+      return null
+    }
+
+    const html = await response.text()
+    
+    // Try to extract data from JSON-LD or script tags
+    // TikTok often embeds video data in a script tag with id="__UNIVERSAL_DATA_FOR_REHYDRATION__"
+    let views = 0
+    let durationSeconds: number | null = null
+
+    // Method 1: Look for JSON-LD structured data
+    const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>(.*?)<\/script>/s)
+    if (jsonLdMatch) {
+      try {
+        const jsonLd = JSON.parse(jsonLdMatch[1])
+        if (jsonLd.duration) {
+          durationSeconds = parseInt(jsonLd.duration, 10)
+        }
+        if (jsonLd.interactionStatistic?.userInteractionCount) {
+          views = parseInt(jsonLd.interactionStatistic.userInteractionCount, 10)
+        }
+      } catch (e) {
+        // JSON parse failed, continue to other methods
+      }
+    }
+
+    // Method 2: Look for TikTok's universal data script
+    const universalDataMatch = html.match(/<script[^>]*id=["']__UNIVERSAL_DATA_FOR_REHYDRATION__["'][^>]*>(.*?)<\/script>/s)
+    if (universalDataMatch) {
+      try {
+        const data = JSON.parse(universalDataMatch[1])
+        // Navigate through TikTok's data structure
+        const videoData = data?.defaultScope?.webapp?.video?.detail?.video || 
+                         data?.__DEFAULT_SCOPE__?.webapp?.video?.detail?.video ||
+                         data?.webapp?.video?.detail?.video
+        
+        if (videoData) {
+          // Extract views
+          if (videoData.stats?.playCount !== undefined) {
+            views = parseInt(String(videoData.stats.playCount), 10) || 0
+          } else if (videoData.playCount !== undefined) {
+            views = parseInt(String(videoData.playCount), 10) || 0
+          }
+          
+          // Extract duration
+          if (videoData.duration !== undefined) {
+            durationSeconds = parseInt(String(videoData.duration), 10) || null
+          } else if (videoData.videoMeta?.duration !== undefined) {
+            durationSeconds = parseInt(String(videoData.videoMeta.duration), 10) || null
+          }
+        }
+      } catch (e) {
+        // JSON parse failed, continue to meta tag method
+      }
+    }
+
+    // Method 3: Look for meta tags
+    if (views === 0) {
+      const viewCountMatch = html.match(/<meta[^>]*property=["']og:video:view_count["'][^>]*content=["'](\d+)["']/i) ||
+                                html.match(/<meta[^>]*name=["']video:view_count["'][^>]*content=["'](\d+)["']/i)
+      if (viewCountMatch) {
+        views = parseInt(viewCountMatch[1], 10) || 0
+      }
+    }
+
+    if (durationSeconds === null) {
+      const durationMatch = html.match(/<meta[^>]*property=["']video:duration["'][^>]*content=["'](\d+)["']/i) ||
+                           html.match(/<meta[^>]*name=["']video:duration["'][^>]*content=["'](\d+)["']/i) ||
+                           html.match(/duration["']?\s*:\s*(\d+)/i)
+      if (durationMatch) {
+        durationSeconds = parseInt(durationMatch[1], 10) || null
+      }
+    }
+
+    // Method 4: Look for inline data attributes or window.__data
+    if (views === 0 || durationSeconds === null) {
+      const windowDataMatch = html.match(/window\.__data\s*=\s*({.*?});/s) ||
+                             html.match(/window\.__INITIAL_STATE__\s*=\s*({.*?});/s)
+      if (windowDataMatch) {
+        try {
+          const windowData = JSON.parse(windowDataMatch[1])
+          // Try to find views and duration in various possible locations
+          if (windowData.video?.stats?.playCount !== undefined && views === 0) {
+            views = parseInt(String(windowData.video.stats.playCount), 10) || 0
+          }
+          if (windowData.video?.duration !== undefined && durationSeconds === null) {
+            durationSeconds = parseInt(String(windowData.video.duration), 10) || null
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+    }
+
+    // Method 5: Look for any script tag containing video data (more flexible)
+    if (views === 0 || durationSeconds === null) {
+      // Try to find any large JSON object in script tags that might contain video data
+      const scriptMatches = html.matchAll(/<script[^>]*>(.*?)<\/script>/gs)
+      for (const match of scriptMatches) {
+        const scriptContent = match[1]
+        // Look for patterns that suggest video metadata
+        if (scriptContent.includes('playCount') || scriptContent.includes('duration') || scriptContent.includes('viewCount')) {
+          try {
+            // Try to extract JSON objects
+            const jsonMatches = scriptContent.match(/\{[^{}]*(?:playCount|viewCount|duration)[^{}]*\}/g)
+            if (jsonMatches) {
+              for (const jsonStr of jsonMatches) {
+                try {
+                  const obj = JSON.parse(jsonStr)
+                  // Recursively search for views and duration
+                  const findValue = (obj: any, keys: string[]): any => {
+                    if (!obj || typeof obj !== 'object') return null
+                    for (const key of keys) {
+                      if (obj[key] !== undefined) return obj[key]
+                    }
+                    for (const value of Object.values(obj)) {
+                      if (typeof value === 'object') {
+                        const found = findValue(value, keys)
+                        if (found !== null) return found
+                      }
+                    }
+                    return null
+                  }
+                  
+                  if (views === 0) {
+                    const foundViews = findValue(obj, ['playCount', 'viewCount', 'views', 'play_count', 'view_count'])
+                    if (foundViews !== null) {
+                      views = parseInt(String(foundViews), 10) || 0
+                    }
+                  }
+                  
+                  if (durationSeconds === null) {
+                    const foundDuration = findValue(obj, ['duration', 'videoDuration', 'video_duration'])
+                    if (foundDuration !== null) {
+                      durationSeconds = parseInt(String(foundDuration), 10) || null
+                    }
+                  }
+                  
+                  if (views > 0 && durationSeconds !== null) break
+                } catch (e) {
+                  // Continue to next match
+                }
+              }
+            }
+          } catch (e) {
+            // Continue to next script tag
+          }
+        }
+      }
+    }
+
+    // Log what we found for debugging
+    if (views > 0 || durationSeconds !== null) {
+      console.log(`✅ Scraped TikTok metadata: views=${views}, duration=${durationSeconds}s`)
+    } else {
+      console.warn(`⚠️ Could not scrape views/duration from TikTok page: ${videoUrl}`)
+    }
+
+    return {
+      views: views || 0,
+      durationSeconds,
+    }
+  } catch (error) {
+    console.error('Error scraping TikTok video metadata:', error)
+    return null
+  }
+}
+
+/**
  * Convert TikTok oEmbed response to database format
+ * Also includes scraped metadata for views and duration
  */
 export function tiktokOEmbedToDbFormat(
   oembed: TikTokOEmbedResponse,
   videoId: string,
-  videoUrl: string
+  videoUrl: string,
+  scrapedMetadata?: { views: number; durationSeconds: number | null } | null
 ) {
   return {
     platform: 'tiktok' as const,
@@ -229,8 +418,8 @@ export function tiktokOEmbedToDbFormat(
     title: oembed.title || `TikTok Video ${videoId}`,
     description: oembed.author_name ? `Video from @${oembed.author_name}` : '',
     publishedAt: new Date(), // oEmbed doesn't provide publish date
-    durationSeconds: oembed.duration || null,
-    views: 0, // oEmbed doesn't provide view count
+    durationSeconds: scrapedMetadata?.durationSeconds ?? oembed.duration ?? null,
+    views: scrapedMetadata?.views ?? 0,
     thumbnailUrl: oembed.thumbnail_url || null,
   }
 }

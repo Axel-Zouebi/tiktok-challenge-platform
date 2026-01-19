@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { extractYouTubeVideoId } from '@/lib/utils'
 import { fetchYouTubeVideoById, youtubeVideoToDbFormat } from '@/lib/api/youtube'
-import { parseTikTokVideoUrl, fetchTikTokVideoByUrl, tiktokOEmbedToDbFormat } from '@/lib/api/tiktok'
+import { parseTikTokVideoUrl, fetchTikTokVideoByUrl, tiktokOEmbedToDbFormat, scrapeTikTokVideoMetadata } from '@/lib/api/tiktok'
 import { normalizeDiscordUsername } from '@/lib/api/discord'
 import { checkEligibilityForVideos } from '@/lib/eligibility'
 import { z } from 'zod'
@@ -99,9 +99,13 @@ export async function POST(request: NextRequest) {
       // Fetch video metadata from TikTok oEmbed API
       const tiktokOEmbed = await fetchTikTokVideoByUrl(videoUrl)
       
+      // Also scrape the page for views and duration (oEmbed doesn't provide these)
+      const scrapedMetadata = await scrapeTikTokVideoMetadata(videoUrl)
+      
       if (tiktokOEmbed) {
         // Use oEmbed data to get thumbnail, title, author, etc.
-        videoData = tiktokOEmbedToDbFormat(tiktokOEmbed, videoId, videoUrl)
+        // Include scraped metadata for views and duration
+        videoData = tiktokOEmbedToDbFormat(tiktokOEmbed, videoId, videoUrl, scrapedMetadata)
       } else {
         // Fallback to basic data if oEmbed fails
         const usernameMatch = videoUrl.match(/tiktok\.com\/@([^/]+)/)
@@ -114,8 +118,8 @@ export async function POST(request: NextRequest) {
           title: `TikTok Video ${videoId}`,
           description: username ? `Video from @${username}` : '',
           publishedAt: new Date(),
-          durationSeconds: null,
-          views: 0,
+          durationSeconds: scrapedMetadata?.durationSeconds ?? null,
+          views: scrapedMetadata?.views ?? 0,
           thumbnailUrl: null,
         }
       }

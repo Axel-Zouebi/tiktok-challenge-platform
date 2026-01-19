@@ -330,8 +330,9 @@ export async function scrapeTikTokVideoMetadata(videoUrl: string): Promise<{
     // Method 5: Look for any script tag containing video data (more flexible)
     if (views === 0 || durationSeconds === null) {
       // Try to find any large JSON object in script tags that might contain video data
-      const scriptMatches = html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)
-      for (const match of scriptMatches) {
+      const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/g
+      let match: RegExpExecArray | null
+      while ((match = scriptRegex.exec(html)) !== null) {
         const scriptContent = match[1]
         // Look for patterns that suggest video metadata
         if (scriptContent.includes('playCount') || scriptContent.includes('duration') || scriptContent.includes('viewCount')) {

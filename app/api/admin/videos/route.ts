@@ -44,6 +44,12 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        participant: {
+          select: {
+            id: true,
+            discordUsername: true,
+          },
+        },
       },
       orderBy: {
         publishedAt: 'desc',

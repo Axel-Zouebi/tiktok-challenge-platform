@@ -49,7 +49,10 @@ interface Video {
     participant: {
       discordUsername: string
     }
-  }
+  } | null
+  participant: {
+    discordUsername: string
+  } | null
 }
 
 export default function AdminPage() {
@@ -66,6 +69,10 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<"all" | "eligible" | "not-eligible">("all")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [videoToDelete, setVideoToDelete] = useState<Video | null>(null)
+
+  const getParticipantUsername = (video: Video): string => {
+    return video.channel?.participant?.discordUsername || video.participant?.discordUsername || "Unknown"
+  }
 
   useEffect(() => {
     // Check if already authenticated
@@ -229,7 +236,7 @@ export default function AdminPage() {
       video.title,
       video.views,
       new Date(video.publishedAt).toLocaleDateString(),
-      video.channel.participant.discordUsername,
+      getParticipantUsername(video),
       video.eligibility?.isEligible ? "Yes" : "No",
       video.eligibility?.eligibleRobux || 0,
       video.eligibility?.reasons.join("; ") || "",
@@ -386,7 +393,7 @@ export default function AdminPage() {
                         {video.platform === "tiktok" ? "TikTok" : "YouTube"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{video.channel.participant.discordUsername}</TableCell>
+                    <TableCell>{getParticipantUsername(video)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Eye className="h-4 w-4 text-muted-foreground" />
@@ -467,7 +474,7 @@ export default function AdminPage() {
                 Platform: {videoToDelete.platform === "tiktok" ? "TikTok" : "YouTube"}
               </p>
               <p className="text-sm text-muted-foreground">
-                Participant: {videoToDelete.channel.participant.discordUsername}
+                Participant: {getParticipantUsername(videoToDelete)}
               </p>
             </div>
           )}

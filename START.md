@@ -13,19 +13,10 @@ This starts the Next.js web app on `http://localhost:3000`
 
 ### Terminal 2 - Discord Bot
 ```bash
-cd C:\Users\axelz\Documents\Tiktok-Challenge
-npm run bot:dev
-```
-This starts the Discord bot (it will automatically load `.env` from `discord-bot/.env`)
-
-## Alternative: Run Bot from discord-bot directory
-
-If you prefer, you can also run the bot directly from its directory:
-
-```bash
-cd C:\Users\axelz\Documents\Tiktok-Challenge\discord-bot
+cd C:\Users\axelz\Documents\discord-bot
 npm run dev
 ```
+This starts the Discord bot (it will automatically load `.env` from the current directory)
 
 ## Verify Everything is Working
 
@@ -41,7 +32,7 @@ npm run dev
 
 ## Troubleshooting
 
-- **Bot can't connect**: Make sure `DISCORD_BOT_TOKEN` is correct in `discord-bot/.env`
+- **Bot can't connect**: Make sure `DISCORD_BOT_TOKEN` is correct in `C:\Users\axelz\Documents\discord-bot\.env`
 - **Bot doesn't respond**: Check that `DISCORD_CHANNEL_ID` matches your channel
-- **Videos not submitting**: Verify `WEB_APP_URL` in `discord-bot/.env` matches where your web app is running
+- **Videos not submitting**: Verify `WEB_APP_URL` in `C:\Users\axelz\Documents\discord-bot\.env` matches where your web app is running
 

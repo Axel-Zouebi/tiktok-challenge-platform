@@ -38,3 +38,6 @@ next-env.d.ts
 # prisma
 # Note: migrations should be committed to git for production deployments
 
+# discord-bot (moved to separate repository)
+discord-bot/
+

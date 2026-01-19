@@ -15,9 +15,30 @@ const submitSchema = z.object({
   platform: z.enum(['youtube', 'tiktok']),
 })
 
+// Handle CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+
 export async function POST(request: NextRequest) {
+  console.log('📥 POST request received at /api/videos/submit')
+  console.log('📥 Request method:', request.method)
+  console.log('📥 Request URL:', request.url)
+  
   try {
     const body = await request.json()
+    console.log('📥 Request body received:', { 
+      discordUsername: body.discordUsername, 
+      platform: body.platform,
+      videoUrl: body.videoUrl?.substring(0, 50) + '...' 
+    })
     const validated = submitSchema.parse(body)
 
     const discordUsername = normalizeDiscordUsername(validated.discordUsername)
@@ -195,6 +216,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    console.log('✅ Video submitted successfully:', video.id)
     return NextResponse.json({
       success: true,
       video: {
@@ -210,7 +232,8 @@ export async function POST(request: NextRequest) {
       message: 'Video submitted successfully',
     })
   } catch (error) {
-    console.error('Video submission error:', error)
+    console.error('❌ Video submission error:', error)
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace')
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(

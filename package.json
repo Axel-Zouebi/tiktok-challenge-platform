@@ -14,8 +14,6 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:reset": "prisma db push --force-reset",
     "db:studio": "prisma studio",
-    "bot": "cd discord-bot && npm start",
-    "bot:dev": "cd discord-bot && npm run dev"
   },
   "dependencies": {
     "@prisma/client": "^5.7.1",

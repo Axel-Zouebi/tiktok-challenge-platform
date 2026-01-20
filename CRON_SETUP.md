@@ -68,7 +68,7 @@ openssl rand -base64 32
 
 ### Step 4: Test the Cron Job
 
-1. In cron-job.org, click "Run now" on your cron job
+1. In cron-job.org, click "Run" on your cron job
 2. Check Vercel logs to see if it executed successfully
 3. Check your database to verify views are being updated
 

@@ -15,18 +15,6 @@ export async function GET(
     const participant = await prisma.participant.findUnique({
       where: { id },
       include: {
-        channels: {
-          include: {
-            videos: {
-              include: {
-                eligibility: true,
-              },
-              orderBy: {
-                publishedAt: 'desc',
-              },
-            },
-          },
-        },
         videos: {
           include: {
             eligibility: true,
@@ -45,24 +33,11 @@ export async function GET(
       )
     }
 
-    // Get all videos from channels
-    const channelVideos = participant.channels.flatMap((channel) =>
-      channel.videos.map((video) => ({
-        ...video,
-        channelId: channel.id,
-      }))
-    )
-
-    // Get videos directly linked to participant (without channel)
-    const directVideos = participant.videos
-      .filter((video) => !video.channelId)
-      .map((video) => ({
-        ...video,
-        channelId: null,
-      }))
-
-    // Combine all videos
-    const allVideos = [...channelVideos, ...directVideos]
+    // Get all videos directly linked to participant
+    const allVideos = participant.videos.map((video) => ({
+      ...video,
+      channelId: null,
+    }))
 
     // Calculate eligibility
     const eligibilityResults = checkEligibilityForVideos(allVideos)
@@ -95,6 +70,8 @@ export async function GET(
 
     // Calculate total views
     const totalViews = allVideos.reduce((sum, video) => sum + video.views, 0)
+    console.log(`📊 Dashboard API: Participant ${id} has ${allVideos.length} videos with total views: ${totalViews}`)
+    console.log(`📊 Individual video views:`, allVideos.map(v => ({ id: v.id, title: v.title?.substring(0, 30), views: v.views })))
 
     // Group videos by eligibility
     const videosWithEligibility = allVideos.map((video) => {
@@ -118,24 +95,22 @@ export async function GET(
     })
 
     // Calculate daily posts per account
-    // Group by participantId (for videos without channels) or channelId
-    const dailyPosts = new Map<string, Map<string, number>>() // groupId -> date -> count
+    // Group by platform and date
+    const dailyPosts = new Map<string, Map<string, number>>() // platform -> date -> count
     for (const video of allVideos) {
       const date = video.publishedAt.toISOString().split('T')[0]
-      const groupId = video.channelId || `participant-${participant.id}`
-      const dateMap = dailyPosts.get(groupId) || new Map()
+      const platform = video.platform
+      const dateMap = dailyPosts.get(platform) || new Map()
       const count = dateMap.get(date) || 0
       dateMap.set(date, count + 1)
-      dailyPosts.set(groupId, dateMap)
+      dailyPosts.set(platform, dateMap)
     }
 
-    const dailyPostsArray = Array.from(dailyPosts.entries()).map(([groupId, dateMap]) => {
-      // If it's a channel ID, find the channel
-      const channel = participant.channels.find((c) => c.id === groupId)
+    const dailyPostsArray = Array.from(dailyPosts.entries()).map(([platform, dateMap]) => {
       return {
-        channelId: channel ? groupId : null,
-        platform: channel?.platform || (allVideos.find((v) => (v.channelId || `participant-${participant.id}`) === groupId)?.platform),
-        handle: channel?.handle || channel?.channelId || 'Direct submission',
+        channelId: null,
+        platform: platform as 'tiktok' | 'youtube',
+        handle: platform === 'tiktok' ? 'TikTok' : 'YouTube',
         dailyCounts: Array.from(dateMap.entries()).map(([date, count]) => ({
           date,
           count,
@@ -143,14 +118,14 @@ export async function GET(
       }
     })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       participant: {
         id: participant.id,
         discordUsername: participant.discordUsername,
         email: participant.email,
         discordAvatarUrl: participant.discordAvatarUrl,
       },
-      channels: participant.channels,
+      channels: [],
       videos: videosWithEligibility,
       totals: {
         totalViews,
@@ -159,6 +134,13 @@ export async function GET(
       },
       dailyPosts: dailyPostsArray,
     })
+    
+    // Prevent caching to ensure fresh data
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    
+    return response
   } catch (error) {
     console.error('Error fetching participant data:', error)
     return NextResponse.json(

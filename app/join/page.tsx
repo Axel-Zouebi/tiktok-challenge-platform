@@ -92,14 +92,8 @@ export default function JoinPage() {
         if (data.details && Array.isArray(data.details)) {
           const serverErrors: typeof errors = {}
           data.details.forEach((detail: { field: string; message: string }) => {
-            if (detail.field === 'email') {
-              serverErrors.email = detail.message
-            } else if (detail.field === 'discordUsername') {
+            if (detail.field === 'discordUsername') {
               serverErrors.discordUsername = detail.message
-            } else if (detail.field === 'tiktokHandle') {
-              serverErrors.tiktokHandle = detail.message
-            } else if (detail.field === 'youtubeChannel') {
-              serverErrors.youtubeChannel = detail.message
             }
           })
           setErrors(serverErrors)
@@ -193,26 +187,11 @@ export default function JoinPage() {
         <CardHeader>
           <CardTitle>Join the Challenge</CardTitle>
           <CardDescription>
-            Register your TikTok and/or YouTube channels to participate
+            Register with your Discord username to participate
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email (Optional)</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                placeholder="your@email.com"
-                className={errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}
-              />
-              {errors.email && (
-                <p className="text-sm text-red-500">{errors.email}</p>
-              )}
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="discordUsername">Discord Username *</Label>
               <Input
@@ -228,37 +207,6 @@ export default function JoinPage() {
               )}
               <p className="text-xs text-muted-foreground">
                 Enter your Discord username (e.g., "username" or "username#1234")
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tiktokHandle">TikTok Handle/URL (Optional)</Label>
-              <Input
-                id="tiktokHandle"
-                value={formData.tiktokHandle}
-                onChange={(e) => handleInputChange("tiktokHandle", e.target.value)}
-                placeholder="@username or https://tiktok.com/@username"
-                className={errors.tiktokHandle ? "border-red-500 focus-visible:ring-red-500" : ""}
-              />
-              {errors.tiktokHandle && (
-                <p className="text-sm text-red-500">{errors.tiktokHandle}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="youtubeChannel">YouTube Channel/URL (Optional)</Label>
-              <Input
-                id="youtubeChannel"
-                value={formData.youtubeChannel}
-                onChange={(e) => handleInputChange("youtubeChannel", e.target.value)}
-                placeholder="Channel ID or https://youtube.com/channel/..."
-                className={errors.youtubeChannel ? "border-red-500 focus-visible:ring-red-500" : ""}
-              />
-              {errors.youtubeChannel && (
-                <p className="text-sm text-red-500">{errors.youtubeChannel}</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                At least one platform (TikTok or YouTube) is required
               </p>
             </div>
 

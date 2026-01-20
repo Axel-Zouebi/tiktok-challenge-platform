@@ -20,13 +20,7 @@ interface ParticipantData {
     email?: string
     discordAvatarUrl?: string | null
   }
-  channels: Array<{
-    id: string
-    platform: string
-    handle?: string | null
-    channelId?: string | null
-    url?: string | null
-  }>
+  channels: Array<never> // Empty array for backward compatibility
   videos: Array<{
     id: string
     platform: string
@@ -50,7 +44,7 @@ interface ParticipantData {
     robuxEarned: number
   }
   dailyPosts: Array<{
-    channelId: string
+    channelId: string | null
     platform: string
     handle?: string | null
     dailyCounts: Array<{
@@ -64,11 +58,7 @@ interface SearchResult {
   id: string
   discordUsername: string
   discordAvatarUrl?: string | null
-  channels: Array<{
-    platform: string
-    handle?: string | null
-    channelId?: string | null
-  }>
+  channels: Array<never> // Empty array for backward compatibility
 }
 
 export default function DashboardPage() {
@@ -251,13 +241,6 @@ export default function DashboardPage() {
                         )}
                         <div className="font-medium">{participant.discordUsername}</div>
                       </div>
-                      <div className="text-sm text-muted-foreground flex gap-2 mt-1 ml-11">
-                        {participant.channels.map((channel, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {channel.platform === "tiktok" ? "TikTok" : "YouTube"}: {channel.handle || channel.channelId || "N/A"}
-                          </Badge>
-                        ))}
-                      </div>
                     </button>
                   ))}
                 </div>
@@ -360,25 +343,6 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Channels */}
-            {data.channels.length > 0 && (
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle>Channels</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {data.channels.map((channel) => (
-                      <Badge key={channel.id} variant="outline" className="text-base px-3 py-1">
-                        {channel.platform === "tiktok" ? "TikTok" : "YouTube"}:{" "}
-                        {channel.handle || channel.channelId || "N/A"}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Daily Posts Count */}
             {data.dailyPosts.length > 0 && (

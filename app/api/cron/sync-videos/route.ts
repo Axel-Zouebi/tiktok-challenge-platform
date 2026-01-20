@@ -78,7 +78,14 @@ export async function GET(request: NextRequest) {
                 channelId: channel.id,
               },
               update: {
-                ...videoData,
+                // Explicitly update all metadata fields including views
+                url: videoData.url,
+                title: videoData.title,
+                description: videoData.description,
+                views: videoData.views,
+                thumbnailUrl: videoData.thumbnailUrl,
+                durationSeconds: videoData.durationSeconds,
+                publishedAt: videoData.publishedAt,
                 lastSyncedAt: new Date(),
               },
               include: {

@@ -12,45 +12,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ participants: [] })
     }
 
-    // Search participants by Discord username or channel handles
+    // Search participants by Discord username only
     const participants = await prisma.participant.findMany({
       where: {
-        OR: [
-          {
-            discordUsername: {
-              contains: query,
-              mode: 'insensitive',
-            },
-          },
-          {
-            channels: {
-              some: {
-                OR: [
-                  {
-                    handle: {
-                      contains: query,
-                      mode: 'insensitive',
-                    },
-                  },
-                  {
-                    channelId: {
-                      contains: query,
-                      mode: 'insensitive',
-                    },
-                  },
-                ],
-              },
-            },
-          },
-        ],
-      },
-      include: {
-        channels: {
-          select: {
-            platform: true,
-            handle: true,
-            channelId: true,
-          },
+        discordUsername: {
+          contains: query,
+          mode: 'insensitive',
         },
       },
       take: 20, // Limit results
@@ -64,11 +31,7 @@ export async function GET(request: NextRequest) {
       id: participant.id,
       discordUsername: participant.discordUsername,
       discordAvatarUrl: participant.discordAvatarUrl,
-      channels: participant.channels.map((c) => ({
-        platform: c.platform,
-        handle: c.handle,
-        channelId: c.channelId,
-      })),
+      channels: [], // Empty array for backward compatibility
     }))
 
     return NextResponse.json({ participants: results })

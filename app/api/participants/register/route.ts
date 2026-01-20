@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { extractYouTubeChannelId, extractTikTokHandle } from '@/lib/utils'
 import { validateDiscordUserExists, normalizeDiscordUsername } from '@/lib/api/discord'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
 
 const registerSchema = z.object({
-  email: z.union([
-    z.string().email('Invalid email address'),
-    z.literal(''),
-  ]).optional(),
   discordUsername: z.string().min(1, 'Discord username is required'),
-  tiktokHandle: z.string().optional().or(z.literal('')),
-  youtubeChannel: z.string().optional().or(z.literal('')),
 })
 
 export async function POST(request: NextRequest) {

@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       }
 
       videoData = youtubeVideoToDbFormat(youtubeVideo)
+      console.log('📊 YouTube videoData views:', videoData.views)
     } else {
       // TikTok
       const videoId = parseTikTokVideoUrl(videoUrl)
@@ -101,11 +102,13 @@ export async function POST(request: NextRequest) {
       
       // Also scrape the page for views and duration (oEmbed doesn't provide these)
       const scrapedMetadata = await scrapeTikTokVideoMetadata(videoUrl)
+      console.log('📊 TikTok scrapedMetadata:', scrapedMetadata)
       
       if (tiktokOEmbed) {
         // Use oEmbed data to get thumbnail, title, author, etc.
         // Include scraped metadata for views and duration
         videoData = tiktokOEmbedToDbFormat(tiktokOEmbed, videoId, videoUrl, scrapedMetadata)
+        console.log('📊 TikTok videoData views (from oEmbed):', videoData.views)
       } else {
         // Fallback to basic data if oEmbed fails
         const usernameMatch = videoUrl.match(/tiktok\.com\/@([^/]+)/)
@@ -122,8 +125,22 @@ export async function POST(request: NextRequest) {
           views: scrapedMetadata?.views ?? 0,
           thumbnailUrl: null,
         }
+        console.log('📊 TikTok videoData views (fallback):', videoData.views)
       }
     }
+    
+    // Ensure views is a valid number (default to 0 if invalid)
+    if (typeof videoData.views !== 'number' || isNaN(videoData.views)) {
+      console.warn('⚠️ Invalid views value, defaulting to 0:', videoData.views)
+      videoData.views = 0
+    }
+    
+    console.log('📊 Final videoData before save:', {
+      platform: videoData.platform,
+      externalVideoId: videoData.externalVideoId,
+      views: videoData.views,
+      title: videoData.title?.substring(0, 50),
+    })
 
     // Check if video already exists
     const existingVideo = await prisma.video.findUnique({
@@ -197,6 +214,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new video
+    console.log('🆕 Creating new video with views:', videoData.views)
     const video = await prisma.video.create({
       data: {
         ...videoData,
@@ -207,6 +225,8 @@ export async function POST(request: NextRequest) {
         eligibility: true,
       },
     })
+    
+    console.log('✅ New video created with views:', video.views)
 
     // Calculate eligibility
     const allParticipantVideos = await prisma.video.findMany({

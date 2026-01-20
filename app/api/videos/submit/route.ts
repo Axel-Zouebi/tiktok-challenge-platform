@@ -139,13 +139,20 @@ export async function POST(request: NextRequest) {
     })
 
     if (existingVideo) {
-      // Update participant if different
-      if (existingVideo.participantId !== participant.id) {
-        await prisma.video.update({
-          where: { id: existingVideo.id },
-          data: { participantId: participant.id },
-        })
-      }
+      // Update video metadata (including views, title, description, thumbnail, etc.)
+      // This ensures views and other metadata are kept up to date
+      await prisma.video.update({
+        where: { id: existingVideo.id },
+        data: {
+          participantId: participant.id,
+          title: videoData.title,
+          description: videoData.description,
+          views: videoData.views,
+          thumbnailUrl: videoData.thumbnailUrl,
+          durationSeconds: videoData.durationSeconds,
+          lastSyncedAt: new Date(),
+        },
+      })
 
       // Recalculate eligibility
       const allParticipantVideos = await prisma.video.findMany({
@@ -178,14 +185,14 @@ export async function POST(request: NextRequest) {
         video: {
           id: existingVideo.id,
           url: existingVideo.url,
-          title: existingVideo.title,
+          title: videoData.title,
         },
         eligibility: result || {
           isEligible: false,
           reasons: ['Eligibility check pending'],
           eligibleRobux: 0,
         },
-        message: 'Video already exists, updated participant association',
+        message: 'Video already exists, updated metadata and participant association',
       })
     }
 

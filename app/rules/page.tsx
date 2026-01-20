@@ -22,13 +22,9 @@ export default function RulesPage() {
           {/* Overview */}
           <Card>
             <CardHeader>
-              <CardTitle>Challenge Overview</CardTitle>
+              <CardTitle>Giveaway Overview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <p className="font-semibold mb-2">Game:</p>
-                <p>One Last Stand (Roblox)</p>
-              </div>
               <div>
                 <p className="font-semibold mb-2">Start Date:</p>
                 <p>January 24</p>

@@ -282,7 +282,7 @@ export default function DashboardPage() {
         {!loading && data && (
           <>
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-4">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
@@ -304,15 +304,11 @@ export default function DashboardPage() {
                     )}
                     <h1 className="text-3xl font-bold">{data.participant.discordUsername}</h1>
                   </div>
-                  <p className="text-muted-foreground">Participant Dashboard</p>
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={() => fetchParticipantData(selectedParticipantId!)} variant="outline" size="sm">
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
-                  </Button>
-                  <Button asChild variant="outline">
-                    <Link href="/">Back to Home</Link>
                   </Button>
                 </div>
               </div>
@@ -360,54 +356,6 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Daily Posts Count */}
-            {data.dailyPosts.length > 0 && (
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle>Daily Posts Count</CardTitle>
-                  <CardDescription>
-                    Track daily post count (max 3 eligible posts per day per account)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {data.dailyPosts.map((daily) => (
-                      <div key={daily.channelId} className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">
-                            {daily.platform === "tiktok" ? "TikTok" : "YouTube"}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {daily.handle || "Channel"}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                          {daily.dailyCounts.map((count) => (
-                            <div
-                              key={count.date}
-                              className={`p-2 rounded-md text-center ${
-                                count.count >= 3
-                                  ? "bg-red-100 dark:bg-red-900"
-                                  : "bg-muted"
-                              }`}
-                            >
-                              <div className="text-xs text-muted-foreground">
-                                {new Date(count.date).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                })}
-                              </div>
-                              <div className="text-lg font-semibold">{count.count}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             <Separator className="my-8" />
 

@@ -71,7 +71,14 @@ export async function GET(
     // Calculate total views
     const totalViews = allVideos.reduce((sum, video) => sum + video.views, 0)
     console.log(`📊 Dashboard API: Participant ${id} has ${allVideos.length} videos with total views: ${totalViews}`)
-    console.log(`📊 Individual video views:`, allVideos.map(v => ({ id: v.id, title: v.title?.substring(0, 30), views: v.views })))
+    console.log(`📊 Individual video views:`, allVideos.map(v => ({ 
+      id: v.id, 
+      title: v.title?.substring(0, 30), 
+      views: v.views,
+      publishedAt: v.publishedAt,
+      publishedAtType: typeof v.publishedAt,
+      publishedAtISO: v.publishedAt instanceof Date ? v.publishedAt.toISOString() : new Date(v.publishedAt).toISOString()
+    })))
 
     // Group videos by eligibility
     const videosWithEligibility = allVideos.map((video) => {
@@ -119,24 +126,40 @@ export async function GET(
     })
 
     // Generate all dates from January 24 to February 24 (2025)
-    const startDate = new Date('2025-01-24')
-    const endDate = new Date('2025-02-24')
+    // Use UTC dates to avoid timezone issues
+    const startDate = new Date('2025-01-24T00:00:00.000Z')
+    const endDate = new Date('2025-02-24T23:59:59.999Z')
     const allDates: string[] = []
     const currentDate = new Date(startDate)
     while (currentDate <= endDate) {
       allDates.push(currentDate.toISOString().split('T')[0])
-      currentDate.setDate(currentDate.getDate() + 1)
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1)
     }
 
     // Group videos by day for the new dashboard structure
+    // Use UTC date to ensure consistent grouping regardless of server timezone
     const videosByDay = new Map<string, typeof videosWithEligibility>()
     for (const video of videosWithEligibility) {
-      const date = new Date(video.publishedAt).toISOString().split('T')[0]
+      // Handle both Date objects and string dates
+      const publishedDate = video.publishedAt instanceof Date 
+        ? video.publishedAt 
+        : new Date(video.publishedAt)
+      // Get UTC date string to avoid timezone issues
+      const date = publishedDate.toISOString().split('T')[0]
+      
+      console.log(`📹 Video ${video.id} published at: ${video.publishedAt} -> date: ${date}`)
+      
       if (!videosByDay.has(date)) {
         videosByDay.set(date, [])
       }
       videosByDay.get(date)!.push(video)
     }
+    
+    console.log(`📅 Videos grouped by day:`, Array.from(videosByDay.entries()).map(([date, videos]) => ({
+      date,
+      count: videos.length,
+      videoIds: videos.map(v => v.id)
+    })))
 
     // Calculate daily robux (eligibility system already applies daily limit of 3 videos = 300 robux max)
     const dailyRobux = new Map<string, number>()
@@ -158,13 +181,27 @@ export async function GET(
         return {
           date,
           videos: videos.sort(
-            (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+            (a, b) => {
+              const dateA = a.publishedAt instanceof Date ? a.publishedAt : new Date(a.publishedAt)
+              const dateB = b.publishedAt instanceof Date ? b.publishedAt : new Date(b.publishedAt)
+              return dateB.getTime() - dateA.getTime()
+            }
           ),
           robuxEarned: dailyRobux.get(date) || 0,
           maxRobux: 300,
         }
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) // January 24 to February 24
+    
+    // Log summary for debugging
+    console.log(`📊 Daily data summary:`, {
+      totalDates: dailyData.length,
+      datesWithVideos: dailyData.filter(d => d.videos.length > 0).map(d => ({
+        date: d.date,
+        videoCount: d.videos.length,
+        robux: d.robuxEarned
+      }))
+    })
 
     const response = NextResponse.json({
       participant: {

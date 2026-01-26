@@ -9,9 +9,11 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
 import Link from "next/link"
 import { Eye, CheckCircle2, Coins, RefreshCw, Search, X } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { getEligibilityChecklist } from "@/lib/eligibility"
 
 interface ParticipantData {
   participant: {
@@ -52,6 +54,28 @@ interface ParticipantData {
       count: number
     }>
   }>
+  dailyData?: Array<{
+    date: string
+    videos: Array<{
+      id: string
+      platform: string
+      title: string
+      description?: string | null
+      publishedAt: string
+      durationSeconds?: number | null
+      views: number
+      thumbnailUrl?: string | null
+      url: string
+      eligibility: {
+        isEligible: boolean
+        reasons: string[]
+        eligibleRobux: number
+        overriddenByAdmin?: boolean | null
+      }
+    }>
+    robuxEarned: number
+    maxRobux: number
+  }>
 }
 
 interface SearchResult {
@@ -70,7 +94,6 @@ export default function DashboardPage() {
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<ParticipantData | null>(null)
-  const [filter, setFilter] = useState<"all" | "eligible" | "not-eligible">("all")
   const [showResults, setShowResults] = useState(false)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
@@ -171,12 +194,6 @@ export default function DashboardPage() {
     setSearchResults([])
     router.push("/dashboard", { scroll: false })
   }
-
-  const filteredVideos = data?.videos.filter((video) => {
-    if (filter === "eligible") return video.eligibility.isEligible
-    if (filter === "not-eligible") return !video.eligibility.isEligible
-    return true
-  }) || []
 
   return (
     <div className="min-h-screen bg-background">
@@ -394,46 +411,223 @@ export default function DashboardPage() {
 
             <Separator className="my-8" />
 
-            {/* Videos */}
+            {/* Daily Videos */}
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Videos</h2>
+                <h2 className="text-2xl font-bold">Daily Progress</h2>
               </div>
 
-              <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
-                <TabsList>
-                  <TabsTrigger value="all">All ({data.videos.length})</TabsTrigger>
-                  <TabsTrigger value="eligible">
-                    Eligible ({data.videos.filter((v) => v.eligibility.isEligible).length})
-                  </TabsTrigger>
-                  <TabsTrigger value="not-eligible">
-                    Not Eligible ({data.videos.filter((v) => !v.eligibility.isEligible).length})
-                  </TabsTrigger>
-                </TabsList>
+              {data.dailyData && data.dailyData.length > 0 ? (
+                <Tabs defaultValue={data.dailyData[0]?.date} className="w-full">
+                  <div className="overflow-x-auto pb-2 -mx-4 px-4">
+                    <TabsList className="inline-flex w-auto gap-2 h-auto">
+                      {data.dailyData.map((day) => {
+                        const date = new Date(day.date)
+                        const isToday = date.toDateString() === new Date().toDateString()
+                        const progressPercent = (day.robuxEarned / day.maxRobux) * 100
+                        
+                        return (
+                          <TabsTrigger
+                            key={day.date}
+                            value={day.date}
+                            className="flex flex-col items-center gap-2 px-5 py-4 min-w-[180px] h-auto"
+                          >
+                            <div className="flex items-center justify-center gap-2 w-full">
+                              <span className="text-base font-semibold">
+                                {isToday ? "Today" : date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              </span>
+                              {isToday && (
+                                <Badge variant="outline" className="text-xs">Today</Badge>
+                              )}
+                            </div>
+                            <div className="w-full space-y-1">
+                              <Progress value={progressPercent} className="h-3" />
+                              <div className="text-sm font-medium text-muted-foreground text-center">
+                                {day.robuxEarned} / {day.maxRobux} robux
+                              </div>
+                            </div>
+                          </TabsTrigger>
+                        )
+                      })}
+                    </TabsList>
+                  </div>
 
-                <TabsContent value={filter} className="mt-6">
-                  {filteredVideos.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-12 text-center text-muted-foreground">
-                        No videos found
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="space-y-4">
-                      {filteredVideos.map((video) => (
-                        <VideoCard
-                          key={video.id}
-                          video={{
-                            ...video,
-                            publishedAt: new Date(video.publishedAt),
-                            eligibility: video.eligibility,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+                  {data.dailyData.map((day) => {
+                    const date = new Date(day.date)
+                    const progressPercent = (day.robuxEarned / day.maxRobux) * 100
+                    const TIKTOK_MIN_VIEWS = 5000
+                    const YOUTUBE_MIN_VIEWS = 10000
+
+                    return (
+                      <TabsContent key={day.date} value={day.date} className="mt-6">
+                        <Card>
+                          <CardHeader>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <CardTitle>
+                                  {date.toLocaleDateString("en-US", { 
+                                    weekday: "long", 
+                                    year: "numeric", 
+                                    month: "long", 
+                                    day: "numeric" 
+                                  })}
+                                </CardTitle>
+                                <CardDescription className="mt-2">
+                                  {day.videos.length} video{day.videos.length !== 1 ? 's' : ''} published
+                                </CardDescription>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-2xl font-bold flex items-center gap-2">
+                                  <Coins className="h-6 w-6" />
+                                  {day.robuxEarned} / {day.maxRobux}
+                                </div>
+                                <div className="text-sm text-muted-foreground">robux earned</div>
+                              </div>
+                            </div>
+                            <div className="mt-4">
+                              <Progress value={progressPercent} className="h-3" />
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            {day.videos.length === 0 ? (
+                              <div className="text-center py-8 text-muted-foreground">
+                                No videos published on this day
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                {day.videos.map((video) => {
+                                  const checklist = getEligibilityChecklist(
+                                    {
+                                      platform: video.platform,
+                                      title: video.title,
+                                      description: video.description,
+                                      durationSeconds: video.durationSeconds,
+                                      views: video.views,
+                                    },
+                                    video.eligibility.overriddenByAdmin
+                                  )
+                                  const minViews = video.platform === 'tiktok' ? TIKTOK_MIN_VIEWS : YOUTUBE_MIN_VIEWS
+                                  const viewsProgress = Math.min((video.views / minViews) * 100, 100)
+
+                                  return (
+                                    <Card key={video.id} className="overflow-hidden">
+                                      <div className="flex flex-col md:flex-row">
+                                        {video.thumbnailUrl && (
+                                          <div className="relative w-full md:w-48 h-48 md:h-auto flex-shrink-0">
+                                            <img
+                                              src={video.thumbnailUrl}
+                                              alt={video.title}
+                                              className="w-full h-full object-cover"
+                                            />
+                                          </div>
+                                        )}
+                                        <div className="flex-1">
+                                          <CardHeader>
+                                            <div className="flex items-start justify-between gap-4">
+                                              <div className="flex-1 min-w-0">
+                                                <CardTitle className="text-lg line-clamp-2 mb-2">
+                                                  {video.title}
+                                                </CardTitle>
+                                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                                  <Badge variant={video.platform === "tiktok" ? "default" : "destructive"}>
+                                                    {video.platform === "tiktok" ? "TikTok" : "YouTube"}
+                                                  </Badge>
+                                                  <Badge variant={video.eligibility.isEligible ? "default" : "secondary"}>
+                                                    {video.eligibility.isEligible ? "✓ Eligible" : "Not Eligible"}
+                                                  </Badge>
+                                                  {video.eligibility.isEligible && (
+                                                    <Badge variant="outline" className="gap-1">
+                                                      <Coins className="h-3 w-3" />
+                                                      {video.eligibility.eligibleRobux} robux
+                                                    </Badge>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              <Link
+                                                href={video.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex-shrink-0"
+                                              >
+                                                <Button variant="ghost" size="icon">
+                                                  <Eye className="h-5 w-5" />
+                                                </Button>
+                                              </Link>
+                                            </div>
+                                          </CardHeader>
+                                          <CardContent>
+                                            <div className="space-y-4">
+                                              {/* Views Progress Bar */}
+                                              <div className="space-y-2">
+                                                <div className="flex items-center justify-between text-sm">
+                                                  <span className="font-medium">Views Progress</span>
+                                                  <span className="text-muted-foreground">
+                                                    {video.views.toLocaleString()} / {minViews.toLocaleString()}
+                                                  </span>
+                                                </div>
+                                                <Progress value={viewsProgress} className="h-2" />
+                                              </div>
+
+                                              {/* Eligibility Checklist */}
+                                              <div className="pt-2 border-t">
+                                                <p className="text-xs font-medium mb-2">Eligibility Requirements:</p>
+                                                <div className="space-y-1.5">
+                                                  {checklist.map((item, idx) => (
+                                                    <div key={idx} className="flex items-start gap-2 text-xs">
+                                                      {item.passed ? (
+                                                        <span className="text-green-500 text-base">✓</span>
+                                                      ) : (
+                                                        <span className="text-red-500 text-base">✗</span>
+                                                      )}
+                                                      <div className="flex-1 min-w-0">
+                                                        <span className={`font-medium ${item.passed ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                                                          {item.label}:
+                                                        </span>
+                                                        <span className="text-muted-foreground ml-1">
+                                                          {item.value}
+                                                        </span>
+                                                      </div>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+
+                                              {/* Status */}
+                                              {video.eligibility.reasons.length > 0 && (
+                                                <div className="pt-2 border-t">
+                                                  <p className="text-xs font-medium mb-1">Status:</p>
+                                                  <ul className="text-xs text-muted-foreground space-y-1">
+                                                    {video.eligibility.reasons.map((reason, idx) => (
+                                                      <li key={idx} className="flex items-start gap-1">
+                                                        <span className="mt-0.5">•</span>
+                                                        <span>{reason}</span>
+                                                      </li>
+                                                    ))}
+                                                  </ul>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </CardContent>
+                                        </div>
+                                      </div>
+                                    </Card>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </TabsContent>
+                    )
+                  })}
+                </Tabs>
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center text-muted-foreground">
+                    No videos found
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </>
         )}

@@ -118,6 +118,54 @@ export async function GET(
       }
     })
 
+    // Generate all dates from January 24 to February 24 (2025)
+    const startDate = new Date('2025-01-24')
+    const endDate = new Date('2025-02-24')
+    const allDates: string[] = []
+    const currentDate = new Date(startDate)
+    while (currentDate <= endDate) {
+      allDates.push(currentDate.toISOString().split('T')[0])
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+
+    // Group videos by day for the new dashboard structure
+    const videosByDay = new Map<string, typeof videosWithEligibility>()
+    for (const video of videosWithEligibility) {
+      const date = new Date(video.publishedAt).toISOString().split('T')[0]
+      if (!videosByDay.has(date)) {
+        videosByDay.set(date, [])
+      }
+      videosByDay.get(date)!.push(video)
+    }
+
+    // Calculate daily robux (eligibility system already applies daily limit of 3 videos = 300 robux max)
+    const dailyRobux = new Map<string, number>()
+    for (const date of allDates) {
+      const dayVideos = videosByDay.get(date) || []
+      // Sum up eligible robux for the day (already capped at 3 videos by eligibility system)
+      const dailyRobuxEarned = dayVideos
+        .filter(v => v.eligibility.isEligible)
+        .reduce((sum, v) => sum + v.eligibility.eligibleRobux, 0)
+      // Cap at 300 robux per day (safety check, though eligibility should already handle this)
+      dailyRobux.set(date, Math.min(dailyRobuxEarned, 300))
+    }
+
+    // Convert to array format for frontend - include all dates, even if no videos
+    // Sort from January 24 to February 24 (oldest first)
+    const dailyData = allDates
+      .map((date) => {
+        const videos = videosByDay.get(date) || []
+        return {
+          date,
+          videos: videos.sort(
+            (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+          ),
+          robuxEarned: dailyRobux.get(date) || 0,
+          maxRobux: 300,
+        }
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) // January 24 to February 24
+
     const response = NextResponse.json({
       participant: {
         id: participant.id,
@@ -133,6 +181,7 @@ export async function GET(
         robuxEarned: robuxInfo.robuxEarned,
       },
       dailyPosts: dailyPostsArray,
+      dailyData, // New field for daily breakdown
     })
     
     // Prevent caching to ensure fresh data

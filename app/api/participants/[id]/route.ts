@@ -125,10 +125,10 @@ export async function GET(
       }
     })
 
-    // Generate all dates from January 24 to February 24 (2025)
+    // Generate all dates from January 24 to February 24 (2026)
     // Use UTC dates to avoid timezone issues
-    const startDate = new Date('2025-01-24T00:00:00.000Z')
-    const endDate = new Date('2025-02-24T23:59:59.999Z')
+    const startDate = new Date('2026-01-24T00:00:00.000Z')
+    const endDate = new Date('2026-02-24T23:59:59.999Z')
     const allDates: string[] = []
     const currentDate = new Date(startDate)
     while (currentDate <= endDate) {

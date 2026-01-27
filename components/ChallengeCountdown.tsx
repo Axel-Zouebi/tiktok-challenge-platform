@@ -14,7 +14,7 @@ export function ChallengeCountdown() {
     // Set target date to January 24th of the current year (or next year if already past)
     const now = new Date()
     const currentYear = now.getFullYear()
-    const targetDate = new Date(currentYear, 1, 1) // January 24th (month is 0-indexed)
+    const targetDate = new Date(currentYear, 1, 15) // January 24th (month is 0-indexed)
     
     // If January 24th has already passed this year, use next year
     if (targetDate < now) {

@@ -10,7 +10,6 @@ import { useState } from "react"
 const navItems = [
   { href: "/", label: "Leaderboard" },
   { href: "/rules", label: "Rules" },
-  { href: "/dashboard", label: "Your videos" },
 ]
 
 export function Navbar() {

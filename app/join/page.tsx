@@ -49,14 +49,6 @@ export default function JoinPage() {
       newErrors.email = "Please enter a valid email address"
     }
 
-    // Validate at least one platform is provided
-    const hasTikTok = formData.tiktokHandle.trim().length > 0
-    const hasYouTube = formData.youtubeChannel.trim().length > 0
-    if (!hasTikTok && !hasYouTube) {
-      newErrors.tiktokHandle = "At least one platform (TikTok or YouTube) is required"
-      newErrors.youtubeChannel = "At least one platform (TikTok or YouTube) is required"
-    }
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }

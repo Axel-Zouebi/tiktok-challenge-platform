@@ -199,77 +199,67 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Search Section */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Your videos</CardTitle>
-            <CardDescription>
-              Find a recap of all your videos
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="relative" ref={resultsRef}>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search your name..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  onFocus={() => {
-                    if (searchResults.length > 0) {
-                      setShowResults(true)
-                    }
-                  }}
-                  className="pl-10 pr-10"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={clearSelection}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              {showResults && searchResults.length > 0 && (
-                <div className="absolute z-50 w-full mt-2 bg-background border rounded-md shadow-lg max-h-96 overflow-y-auto">
-                  {searchResults.map((participant) => (
-                    <button
-                      key={participant.id}
-                      onClick={() => handleSelectParticipant(participant)}
-                      className="w-full text-left px-4 py-3 hover:bg-accent transition-colors border-b last:border-b-0"
-                    >
-                      <div className="flex items-center gap-3">
-                        {participant.discordAvatarUrl ? (
-                          <img
-                            src={participant.discordAvatarUrl}
-                            alt={participant.discordUsername}
-                            className="w-8 h-8 rounded-full object-cover"
-                            onError={(e) => {
-                              // Fallback to default Discord avatar if image fails to load
-                              const target = e.target as HTMLImageElement
-                              target.src = `https://cdn.discordapp.com/embed/avatars/${(participant.id.charCodeAt(0) % 5)}.png`
-                            }}
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                            {participant.discordUsername.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div className="font-medium">{participant.discordUsername}</div>
+        <div className="relative mb-6" ref={resultsRef}>
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="check other member's video"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onFocus={() => {
+                if (searchResults.length > 0) {
+                  setShowResults(true)
+                }
+              }}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSelection}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          {showResults && searchResults.length > 0 && (
+            <div className="absolute z-50 w-full max-w-md mt-2 bg-background border rounded-md shadow-lg max-h-96 overflow-y-auto">
+              {searchResults.map((participant) => (
+                <button
+                  key={participant.id}
+                  onClick={() => handleSelectParticipant(participant)}
+                  className="w-full text-left px-4 py-3 hover:bg-accent transition-colors border-b last:border-b-0"
+                >
+                  <div className="flex items-center gap-3">
+                    {participant.discordAvatarUrl ? (
+                      <img
+                        src={participant.discordAvatarUrl}
+                        alt={participant.discordUsername}
+                        className="w-8 h-8 rounded-full object-cover"
+                        onError={(e) => {
+                          // Fallback to default Discord avatar if image fails to load
+                          const target = e.target as HTMLImageElement
+                          target.src = `https://cdn.discordapp.com/embed/avatars/${(participant.id.charCodeAt(0) % 5)}.png`
+                        }}
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                        {participant.discordUsername.charAt(0).toUpperCase()}
                       </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {showResults && searchQuery && searchResults.length === 0 && (
-                <div className="absolute z-50 w-full mt-2 bg-background border rounded-md shadow-lg p-4 text-center text-muted-foreground">
-                  No participants found
-                </div>
-              )}
+                    )}
+                    <div className="font-medium">{participant.discordUsername}</div>
+                  </div>
+                </button>
+              ))}
             </div>
-          </CardContent>
-        </Card>
+          )}
+          {showResults && searchQuery && searchResults.length === 0 && (
+            <div className="absolute z-50 w-full max-w-md mt-2 bg-background border rounded-md shadow-lg p-4 text-center text-muted-foreground">
+              No participants found
+            </div>
+          )}
+        </div>
 
         {/* Dashboard Section */}
         {loading && (

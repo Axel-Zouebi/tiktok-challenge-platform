@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Platform } from "@prisma/client"
 import { useRouter } from "next/navigation"
 
@@ -47,34 +47,32 @@ export function LeaderboardTable({ entries, platform }: LeaderboardTableProps) {
     router.push(`/dashboard?id=${participantId}`)
   }
 
+  const handleSeeMoreClick = (e: React.MouseEvent, participantId: string) => {
+    e.stopPropagation()
+    router.push(`/dashboard?id=${participantId}`)
+  }
+
   return (
-    <Table>
+    <Table className="w-full">
       <TableHeader>
         <TableRow>
           <TableHead className="w-12">Rank</TableHead>
-          <TableHead>Participant</TableHead>
-          <TableHead>Channel</TableHead>
-          <TableHead className="text-right">Total Views</TableHead>
-          <TableHead className="text-right">Eligible Posts</TableHead>
-          <TableHead className="text-right">Robux Earned</TableHead>
+          <TableHead className="w-auto">Participant</TableHead>
+          <TableHead className="text-right w-auto">Total Views</TableHead>
+          <TableHead className="text-right w-auto">Robux Earned</TableHead>
+          <TableHead className="text-right w-auto"></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {entries.map((entry) => {
-          // If platform is specified, show only that platform's channel
-          // Otherwise, show all channels
-          const channelsToShow = platform 
-            ? entry.channels.filter((c) => c.platform === platform)
-            : entry.channels
-
           return (
             <TableRow 
               key={entry.participantId}
               className="cursor-pointer hover:bg-accent transition-colors"
               onClick={() => handleRowClick(entry.participantId)}
             >
-              <TableCell className="font-medium">#{entry.rank}</TableCell>
-              <TableCell className="font-medium">
+              <TableCell className="font-medium text-left">#{entry.rank}</TableCell>
+              <TableCell className="font-medium text-left">
                 <div className="flex items-center gap-3">
                   {entry.discordAvatarUrl ? (
                     <img
@@ -95,30 +93,19 @@ export function LeaderboardTable({ entries, platform }: LeaderboardTableProps) {
                   <span>{entry.discordUsername}</span>
                 </div>
               </TableCell>
-              <TableCell>
-                {channelsToShow.length > 0 ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {channelsToShow.map((channel) => (
-                      <div key={channel.platform} className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          {channel.platform === "tiktok" ? "TikTok" : "YouTube"}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {channel.handle || "N/A"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-sm text-muted-foreground">—</span>
-                )}
-              </TableCell>
-              <TableCell className="text-right font-medium">
+              <TableCell className="text-right font-medium whitespace-nowrap">
                 {entry.totalViews.toLocaleString()}
               </TableCell>
-              <TableCell className="text-right">{entry.eligiblePosts}</TableCell>
-              <TableCell className="text-right font-medium">
+              <TableCell className="text-right font-medium whitespace-nowrap">
                 {entry.robuxEarned.toLocaleString()}
+              </TableCell>
+              <TableCell className="text-right whitespace-nowrap">
+                <Button
+                  onClick={(e) => handleSeeMoreClick(e, entry.participantId)}
+                  className="bg-black text-white rounded-full px-3 py-2 hover:bg-black/90"
+                >
+                  See videos
+                </Button>
               </TableCell>
             </TableRow>
           )

@@ -1,9 +1,9 @@
-import { LeaderboardTable, LeaderboardEntry } from "@/components/LeaderboardTable"
+import { LeaderboardEntry } from "@/components/LeaderboardTable"
+import { LeaderboardSection } from "@/components/LeaderboardSection"
 import { GameIcon } from "@/components/GameIcon"
 import { RobuxIcon } from "@/components/RobuxIcon"
 import { ChallengeCountdown } from "@/components/ChallengeCountdown"
 import { PlayButton } from "@/components/PlayButton"
-import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { headers } from "next/headers"
 
@@ -133,19 +133,7 @@ export default async function HomePage() {
       </div>
 
       {/* Leaderboards Section */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="space-y-6 flex flex-col items-center">
-          <h2 className="text-3xl font-bold">Leaderboard</h2>
-          <p className="text-muted-foreground text-center">
-            Ranked by total views from eligible videos across TikTok and YouTube
-          </p>
-          <Card className="w-full max-w-4xl">
-            <CardContent className="pt-6">
-              <LeaderboardTable entries={leaderboard} />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <LeaderboardSection entries={leaderboard} />
     </div>
   )
 }

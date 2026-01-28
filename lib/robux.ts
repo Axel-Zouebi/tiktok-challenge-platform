@@ -33,13 +33,23 @@ export async function calculateParticipantRobux(
     throw new Error('Participant not found')
   }
 
+  // Count eligible videos linked to participant either via channel OR directly via participantId
   const eligibleVideos = await prisma.videoEligibility.count({
     where: {
-      video: {
-        channel: {
-          participantId,
+      OR: [
+        {
+          video: {
+            channel: {
+              participantId,
+            },
+          },
         },
-      },
+        {
+          video: {
+            participantId,
+          },
+        },
+      ],
       isEligible: true,
       eligibleRobux: ROBUX_PER_ELIGIBLE_VIDEO,
     },

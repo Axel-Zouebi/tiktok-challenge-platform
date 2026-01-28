@@ -24,7 +24,7 @@ export function LeaderboardSection({ entries }: LeaderboardSectionProps) {
       <div className="space-y-2 flex flex-col items-center">
         <h2 className="text-3xl font-bold">Leaderboard</h2>
         <p className="text-muted-foreground text-center">
-          Ranked by total views from eligible videos across TikTok and YouTube
+          Ranked by total views from all submitted TikTok and YouTube videos
         </p>
         <div className="w-full max-w-4xl pt-4">
           <div className="relative">

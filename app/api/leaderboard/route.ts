@@ -24,17 +24,17 @@ export async function GET(request: NextRequest) {
       include: {
         channels: {
           ...(platform ? { where: { platform } } : {}),
+          select: {
+            platform: true,
+            handle: true,
+            channelId: true,
+            url: true,
+          },
+        },
+        videos: {
+          ...(platform ? { where: { platform } } : {}),
           include: {
-            videos: {
-              ...(platform ? { where: { platform } } : {}),
-              include: {
-                eligibility: {
-                  where: {
-                    isEligible: true,
-                  },
-                },
-              },
-            },
+            eligibility: true,
           },
         },
       },
@@ -87,7 +87,9 @@ export async function GET(request: NextRequest) {
     const entries = participants
       .map((participant) => {
         const channels = participant.channels
-        const allVideos = channels.flatMap((c) => c.videos)
+        // Use all videos linked to the participant, regardless of eligibility,
+        // so totalViews reflects every published video.
+        const allVideos = participant.videos
         const totalViews = allVideos.reduce((sum, v) => sum + v.views, 0)
         const eligiblePosts = allVideos.filter((v) => v.eligibility?.isEligible).length
         const robuxEarned = eligiblePosts * 100
@@ -107,7 +109,12 @@ export async function GET(request: NextRequest) {
           robuxEarned,
         }
       })
-      .sort((a, b) => b.totalViews - a.totalViews)
+      .sort((a, b) => {
+        // Primary: Robux earned (higher first)
+        if (b.robuxEarned !== a.robuxEarned) return b.robuxEarned - a.robuxEarned
+        // Secondary: total views (higher first, for ties)
+        return b.totalViews - a.totalViews
+      })
       .map((entry, index) => ({
         ...entry,
         rank: index + 1,
